@@ -19,10 +19,10 @@ def getpdfs(url,maxlevels):
     links = imp.getpdfs(maxlevel=maxlevels,siteurl=url,links=[(url,url)])
     return links
 
-def scrapper(url,downloaddirectory):
+def scrapper(url,downloaddirectory,linklevel):
     docs = []
     retsuccess = True
-    links = getpdfs(url,1)
+    links = getpdfs(url,linklevel)
     if not os.path.exists(downloaddirectory):
         os.makedirs(downloaddirectory)
     files,success = downloadfiles(links=links,destinationfolder=downloaddirectory)
@@ -41,4 +41,3 @@ def scrapper(url,downloaddirectory):
                 break
     return docs,retsuccess
 
-scrapper('http://www.scottsvilleny.org/','./downloads')

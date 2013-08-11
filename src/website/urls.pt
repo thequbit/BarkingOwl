@@ -1,0 +1,20 @@
+<html>
+<head>
+    <title>PDFHound - PDF search tool</title>
+</head>
+<body>
+
+<script src="static/jquery.min.js"></script>
+
+<script>
+
+jQuery.ajax({type:'POST',
+             url: 'urls',
+             data: JSON.stringify({'a':1}),
+             contentType: 'application/json; charset=utf-8'});
+
+</script>
+
+</body>
+</html>
+

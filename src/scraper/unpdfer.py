@@ -8,6 +8,16 @@ import hashlib
 import nltk
 
 class UnPDFer:
+
+    _verbose = False
+
+    def __init__(self,verbose):
+        self._verbose = verbose
+
+    def _report(self,text):
+        if self._verbose:
+            print "[unPDFer ] {0}".format(text)
+
     def _pdf2text(self,fp):
         try:
             rsrcmgr = PDFResourceManager()
@@ -40,6 +50,7 @@ class UnPDFer:
         return text
 
     def unpdf(self,filename,SCRUB=False):
+        self._report("Processing '{0}'".format(filename))
         with open(filename,'rb') as fp:
             pdftext,success = self._pdf2text(fp)
             if SCRUB:

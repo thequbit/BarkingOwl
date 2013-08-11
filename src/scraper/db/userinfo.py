@@ -2,7 +2,7 @@ import MySQLdb as mdb
 import _mysql as mysql
 import re
 
-class docs:
+class userinfo:
 
     __settings = {}
     __con = False
@@ -24,21 +24,21 @@ class docs:
             valueout = valuein
         return valuein
 
-    def add(self,docurl,filename,linktext,downloaddatetime,doctext,dochash,urlid):
+    def add(self,userinfoid,userid,enabled,email,twitter,phone,pushinterval):
         con = self.__connect()
         with con:
             cur = con.cursor()
-            cur.execute("INSERT INTO docs(docurl,filename,linktext,downloaddatetime,doctext,dochash,urlid) VALUES(%s,%s,%s,%s,%s,%s,%s)",(self.__sanitize(docurl),self.__sanitize(filename),self.__sanitize(linktext),self.__sanitize(downloaddatetime),self.__sanitize(doctext),self.__sanitize(dochash),self.__sanitize(urlid)))
+            cur.execute("INSERT INTO userinfo(userinfoid,userid,enabled,email,twitter,phone,pushinterval) VALUES(%s,%s,%s,%s,%s,%s,%s)",(self.__sanitize(userinfoid),self.__sanitize(userid),self.__sanitize(enabled),self.__sanitize(email),self.__sanitize(twitter),self.__sanitize(phone),self.__sanitize(pushinterval)))
             cur.close()
             newid = cur.lastrowid
         con.close()
         return newid
 
-    def get(self,docid):
+    def get(self,):
         con = self.__connect()
         with con:
             cur = con.cursor()
-            cur.execute("SELECT * FROM docs WHERE docid = %s",(docid))
+            cur.execute("SELECT * FROM userinfo WHERE  = %s",())
             row = cur.fetchone()
             cur.close()
         con.close()
@@ -48,43 +48,40 @@ class docs:
         con = self.__connect()
         with con:
             cur = con.cursor()
-            cur.execute("SELECT * FROM docs")
+            cur.execute("SELECT * FROM userinfo")
             rows = cur.fetchall()
             cur.close()
-        _docs = []
+        _userinfo = []
         for row in rows:
-            _docs.append(row)
+            _userinfo.append(row)
         con.close()
-        return _docs
+        return _userinfo
 
-    def delete(self,docid):
+    def delete(self,):
         con = self.__connect()
         with con:
             cur = con.cursor()
-            cur.execute("DELETE FROM docs WHERE docid = %s",(docid))
+            cur.execute("DELETE FROM userinfo WHERE  = %s",())
             cur.close()
         con.close()
 
-    def update(self,docid,docurl,filename,linktext,downloaddatetime,doctext,dochash,urlid):
+    def update(self,userinfoid,userid,enabled,email,twitter,phone,pushinterval):
         con = self.__connect()
         with con:
             cur = con.cursor()
-            cur.execute("UPDATE docs SET docurl = %s,filename = %s,linktext = %s,downloaddatetime = %s,doctext = %s,dochash = %s,urlid = %s WHERE docid = %s",(self.__sanitize(docurl),self.__sanitize(filename),self.__sanitize(linktext),self.__sanitize(downloaddatetime),self.__sanitize(doctext),self.__sanitize(dochash),self.__sanitize(urlid),self.__sanitize(docid)))
+            cur.execute("UPDATE userinfo SET userinfoid = %s,userid = %s,enabled = %s,email = %s,twitter = %s,phone = %s,pushinterval = %s WHERE  = %s",(self.__sanitize(userinfoid),self.__sanitize(userid),self.__sanitize(enabled),self.__sanitize(email),self.__sanitize(twitter),self.__sanitize(phone),self.__sanitize(pushinterval),)))
             cur.close()
         con.close()
 
 ##### Application Specific Functions #####
 
-    def gethashs(self):
-        con = self.__connect()
-        with con:
-            cur = con.cursor()
-            cur.execute("SELECT dochash FROM docs")
-            rows = cur.fetchall()
-            cur.close()
-        _hashs = []
-        for row in rows:
-            dochash, = row
-            _hashs.append(dochash)
-        con.close()
-        return _hashs
+#    def myfunc():
+#        con = self.__connect()
+#        with con:
+#            cur = son.cursor()
+#            cur.execute("")
+#            row = cur.fetchone()
+#            cur.close()
+#        con.close()
+#        return row
+

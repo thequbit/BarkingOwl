@@ -6,6 +6,15 @@ from random import randint
 
 class DLer:
 
+    _verbose = False
+
+    def __init__(self,verbose):
+        self._verbose = verbose
+
+    def _report(self,text):
+        if self._verbose:
+            print "[DLer    ] {0}".format(text)
+
     def _fileexists(self,filename):
         exists = False
         if filename == None:
@@ -48,11 +57,12 @@ class DLer:
         files = []
         for _link in links:
             link,text = _link
+            self._report("Download '{0}'...".format(link))
             filename,datetime,success = self._download(link,destdir)
             if not success:
                 retsuccess = False
                 break
             else:
-                files.append((filename,text,datetime))
+                files.append((link,filename,text,datetime))
         return (files,retsuccess)
 

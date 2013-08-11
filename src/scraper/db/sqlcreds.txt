@@ -1,4 +1,0 @@
-host=
-username=
-password=
-database=barkingowl

@@ -29,4 +29,11 @@ This tool pulls a list of urls and phrases from the database, and spits out proc
 
     > pip install python-magic
 
+#####Running the scrapper#####
 
+    > python runscrapper.py
+    
+This will connect to the database through the sql2api db access layer and pull down all of the URLS that
+need to be scrapped.  It will then scrape all of the URLS, find the PDFS, process them, and then push the
+results into the database.
+    

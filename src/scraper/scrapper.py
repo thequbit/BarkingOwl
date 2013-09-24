@@ -12,8 +12,8 @@ def _report(text):
 
 def unpdf(filename,scrub):
     unpdfer = UnPDFer(verbose)
-    pdftext,pdfhash,tokens,success = unpdfer.unpdf(filename=filename,SCRUB=scrub)
-    return pdftext,pdfhash,tokens,success
+    created,pdftext,pdfhash,tokens,success = unpdfer.unpdf(filename=filename,SCRUB=scrub)
+    return created,pdftext,pdfhash,tokens,success
 
 def downloadfiles(links,destinationfolder):
     dler = DLer(verbose)
@@ -37,10 +37,10 @@ def scrapper(url,downloaddirectory,linklevel):
         retsuccess = False
     else:
         for f in files:
-            url,filename,linktext,datetime = f
-            pdftext,pdfhash,tokens,success = unpdf(filename,True)
+            url,filename,linktext,downloaded = f
+            created,pdftext,pdfhash,tokens,success = unpdf(filename,True)
             if success:
-                docs.append((url,filename,linktext,datetime,pdftext,pdfhash,tokens))
+                docs.append((url,filename,linktext,downloaded,created,pdftext,pdfhash,tokens))
             else:
                 #print "pdf->txt unsuccessful"
                 retsuccess = False

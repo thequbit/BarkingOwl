@@ -87,21 +87,31 @@ class pdfimp:
                 self._processed.append(_l)
                 self._report("Processing {0} links ...".format(len(pagelinks)))
 
+                #
+                # Look at the links found on the page, and add those that are within the domain to 'thelinks'
+                #
                 thelinks = []
                 for _pagelink in pagelinks:
                     match,pagelink,linktext = _pagelink
                     if( match == True ): #and ( (level != maxlevel) or (level == maxlevel and (not pagelink in retlinks) ) ) ):
                         thelinks.append((pagelink,linktext))
-                for l in thelinks:
-                    if level >= maxlevel:
-                        self._processed.append(l)
+                #for l in thelinks:
+                #    if level >= maxlevel:
+                #        self._processed.append(l)
                 
+                #
+                # Follow all of the link within the 'thelink' array
+                #
                 gotlinks = self._followlinks(maxlevel=maxlevel,siteurl=siteurl,links=thelinks,level=level,filesize=filesize,verbose=verbose)
                 for _gotlink in gotlinks:
                     gotlink,linktext = _gotlink
+                    
+                    # only process if we haven't processed it
                     if not any(gotlink in r for r in retlinks):
                         success,linktype = self._typelink(gotlink,filesize)
-                        if success == True and linktype == 'application/pdf' and not gotlink in self._processed:
+                        
+                        # if it is a pdf, then add it to the self._pdfs array
+                        if success == True and linktype == 'application/pdf': # and not gotlink in self._processed:
                             #retlinks.append((gotlink,linktext))
                             self._pdfs.append((gotlink,linktext))
                             self._processed.append(gotlink)
@@ -109,11 +119,15 @@ class pdfimp:
                         else:
                             ignored += 1
     
+                #
+                # Some of the links that were returned from this page might be pdfs, if they are, add them to the list
+                # of pdfs to be returned 'retlinks'
+                #
                 for _thelink in thelinks:
                    thelink,linktext = _thelink 
                    if not any(thelink in r for r in retlinks):
                         success,linktype = self._typelink(thelink,filesize)
-                        if success == True and linktype == 'application/pdf' and not thelink in self._processed:
+                        if success == True and linktype == 'application/pdf': # and not thelink in self._processed:
                             self._pdfs.append((thelink,linktext))
                             retlinks.append((thelink,linktext))
                             self._processed.append(thelink)

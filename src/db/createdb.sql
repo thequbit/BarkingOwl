@@ -108,8 +108,8 @@ enddatetime datetime not null,
 success bool not null
 );
 
-create table if not exists scraps(
-scrapid int not null auto_increment primary key,
+create table if not exists scrapes(
+scrapeid int not null auto_increment primary key,
 orgid int not null,
 foreign key (orgid) references orgs(orgid), 
 startdatetime datetime not null,
@@ -119,10 +119,10 @@ urlid int not null,
 foreign key (urlid) references urls(urlid)
 );
 
-create index scraps_scrapid on scraps(scrapid);
-create index scraps_startdatetime on scraps(startdatetime);
-create index scraps_enddatetime on scraps(enddatetime);
-create index scraps_urlid on scraps(urlid);
+create index scrapes_scrapid on scrapes(scrapeid);
+create index scrapes_startdatetime on scrapes(startdatetime);
+create index scrapes_enddatetime on scrapes(enddatetime);
+create index scrapes_urlid on scrapes(urlid);
 
 create table if not exists docs(
 docid int not null auto_increment primary key,

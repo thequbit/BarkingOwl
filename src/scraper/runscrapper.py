@@ -1,65 +1,126 @@
-from sqlalchemy import *
-from sqlalchemy.orm import (
-    sessionmaker,
-    )
-from sqlalchemy.ext.declarative import declarative_base
+#from sqlalchemy import *
+#from sqlalchemy.orm import (
+#    sessionmaker,
+#    )
+#from sqlalchemy.ext.declarative import declarative_base
 
-from scrapper import scrapper
+#from scrapper import scrapper
 
 from time import strftime
 from time import clock
 import os
 import threading
 
+from pdfimp import pdfimp
+from dler import DLer
+from unpdfer import UnPDFer
+
+
+# sql2api db access 
 from models import *
 
-engine = create_engine('mysql://bouser:password123%%%@lisa.duffnet.local', echo=True)
-engine.execute("USE barkingowl")
-Session = sessionmaker(bind=engine)
-DBSession = Session()
-Base = declarative_base()
-Base.metadata.create_all(engine)
-
+#engine = create_engine('mysql://bouser:password123%%%@lisa.duffnet.local', echo=True)
+#engine.execute("USE barkingowl")
+#Session = sessionmaker(bind=engine)
+#DBSession = Session()
+#Base = declarative_base()
+#Base.metadata.create_all(engine)
 
 verbose = True
 
-def _report(text):
+def report(text):
     if verbose:
         print "[Scrapper] {0}".format(text)
 
-def geturls():
-    urls = DBSession.query(UrlModel)
-    return urls
+def unpdf(filename,scrub):
+    unpdfer = UnPDFer(verbose)
+    created,pdftext,pdfhash,tokens,success = unpdfer.unpdf(filename=filename,SCRUB=scrub)
+    return created,pdftext,pdfhash,tokens,success
 
-def gethashs():
-    hashs = DBSession.query(DocModel.dochash).all()
+def downloadfiles(links,destinationfolder):
+    dler = DLer(verbose)
+    files,success = dler.dl(links,destinationfolder)
+    return files,success
+
+def getpdfs(url,maxlevels):
+    imp = pdfimp(verbose)
+    links = imp.getpdfs(maxlevel=maxlevels,siteurl=url,links=[(url,url)])
+    return links
+
+def getorgs():
+    orgs = Orgs()
+    allorgs = orgs.getall()
+    return allorgs
+
+def geturls(orgid):
+    urls = Urls()
+    orgurls = urls.byorgid(orgid)
+    return orgurls
+
+def gethashs(urlid):
+    docs = Docs()
+    hashs = docs.gethashs(urlid) 
     return hashs
 
-def addrun(start,end,success,urlid):
-    run = RunModel(start,end,success,urlid)
-    DBSession.add(run)
+def addscrape(orgid,start,end,success,urlid):
+    scrapes = Scrapes()
+    scrapeid = scrapes.add(orgid,start,end,success,urlid)
+    return scrapeid
 
-def adddoc(docurl,filename,linktext,downloaded,created,doctext,dochash,urlid):
-    doc = DocModel(docurl,filename,linktext,downloaded,created,doctext,dochash,urlid)
-    DBSession.add(doc)
-    return doc.id
+def adddoc(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid):
+    docs = Docs()
+    docid = docs.add(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid)
+    return docid
 
-def scrapurls(urls,destinationdirectory,linklevel):
+def scrapper(url,downloaddirectory,linklevel):
+    docs = []
     retsuccess = True
-    #_report("Working on {0} URLs ...".format(len(urls)))
-    for url in urls:
+    links = getpdfs(url,linklevel)
+    if not os.path.exists(downloaddirectory):
+        os.makedirs(downloaddirectory)
+    files,success = downloadfiles(links=links,destinationfolder=downloaddirectory)
+    #print "Downloaded {0} files with a status of {1}".format(len(files),success)
+    if not success:
+        #print "unable to download files."
+        retsuccess = False
+    else:
+        for f in files:
+            url,filename,linktext,downloaded = f
+            created,pdftext,pdfhash,tokens,success = unpdf(filename,True)
+            #print "done with pdf, with sucess of '{0}'".format(success)
+            if success:
+                docs.append((url,filename,linktext,downloaded,created,pdftext,pdfhash,tokens))
+            else:
+                #print "pdf->txt unsuccessful"
+                retsuccess = False
+                break
+    return docs,retsuccess
+
+def scrapurls(orgname,urls,destinationdirectory,linklevel):
+    retsuccess = True
+    report("Working on {0} URLs for '{1}'...".format(len(urls),orgname))
+    for _url in urls:
+        urlid,orgid,url,urlname,description,createdatettime,creationuserid = _url
         starttime = strftime("%Y-%m-%d %H:%M:%S")
-        _report("Started at: {0}".format(starttime))
-        _report("Running on: {0}".format(url.url))
-        docs,success = scrapper(url.url,destinationdirectory,linklevel)
+        report("Started at: {0}".format(starttime))
+        report("Running on: '{0}'".format(urlname))
+        report("    {0}".format(url))
+        docs,success = scrapper(url,destinationdirectory,linklevel)
         if success:
-            _report("Found {0} pdf documents.".format(len(docs)))
+            report("Found {0} pdf documents.".format(len(docs)))
             for doc in docs:
-                hashs = gethashs()
-                docurl,filename,linktext,downloaded,created,doctext,dochash,tokens = doc
+                hashs = gethashs(urlid)
+                docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,tokens = doc
                 if not dochash in hashs:
-                    _report("Adding doc: {0} [{1}]".format(filename,dochash))
-                    docid = adddoc(docurl,filename,linktext,downloaded,created,doctext,dochash,url.id)
+                    report("Pushing to database doc: {0} [{1}]".format(filename,dochash))
+                    #docid = adddoc(docurl,filename,linktext,downloaded,created,doctext,dochash,url.id)
+                    
+                    # cleanup the text a bit.  get rid of repeating spaces and \n to save DB space
+                    doctext = re.sub(' +',' ',doctext)
+                    doctext = re.sub('\n+','\n',doctext)
+
+                    docid = adddoc(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid)
+
                     #
                     #   NOTE: Removing this section for first rev of site
                     #
@@ -71,25 +132,38 @@ def scrapurls(urls,destinationdirectory,linklevel):
                     #        savefind(urlphraseid,now,docid)
                     #    # TODO: send notification to user
                 else:
-                    _report("Skipping doc, already processed.")
+                    report("Skipping doc, already processed.")
+        else:
+            # TODO: fail more eligantly than this ...
+            retsuccess = False
+            break
         endtime = strftime("%Y-%m-%d %H:%M:%S")
-        addrun(starttime,endtime,retsuccess,url.id)
+        addscrape(orgid,starttime,endtime,retsuccess,urlid)
     return retsuccess
 
-def split_list(alist, wanted_parts=1):
-    length = len(alist)
-    return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts]
-             for i in range(wanted_parts) ]
+#def split_list(alist, wanted_parts=1):
+#    length = len(alist)
+#    return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts]
+#             for i in range(wanted_parts) ]
 
 def runscraper(destinationdirectory,linklevel):
-    allurls = []
-    for url in geturls():
-        allurls.append(url)
-    urllist = split_list(allurls)
-    for urls in urllist:
-        print type(urllist)
-        t = threading.Thread(target=scrapurls, args=(urls,destinationdirectory,linklevel))
-        t.start()
+    #allurls = []
+    #for url in geturls():
+    #    allurls.append(url)
+    #urllist = split_list(allurls)
+    #for urls in urllist:
+    #    print type(urllist)
+    #    t = threading.Thread(target=scrapurls, args=(urls,destinationdirectory,linklevel))
+    #    t.start()
+
+    # get all of the organizations from the database and pull the urls for each of them
+    orgs = getorgs()
+    for org in orgs:
+        orgid,orgname,description,creationdatetime,ownerid = org
+        print "[{0}] {1}:".format(orgid,orgname)
+        urls = geturls(orgid)
+        #print "Found {0} urls".format(len(urls))
+        scrapurls(orgname,urls,destinationdirectory,linklevel)
 
 def deletefiles(folder):
     for the_file in os.listdir(folder):
@@ -108,13 +182,13 @@ def secondsToStr(t):
             [(t*1000,),1000,60,60])
 
 def main():
-    linklevel = 5
-    _report("Running scraper with a link depth of {0} ...".format(linklevel))
+    linklevel = 1
+    report("Running scraper with a link depth of {0} ...".format(linklevel))
     starttime = clock()
     runscraper('./downloads',linklevel)
-    _report("Cleaning up downloaded files.")
+    report("Cleaning up downloaded files.")
     deletefiles('./downloads')
     endtime = clock()
-    _report("Scrapper completed in {0}.".format(secondsToStr(endtime-starttime)))
+    report("Scrapper completed in {0}.".format(secondsToStr(endtime-starttime)))
     
 main()

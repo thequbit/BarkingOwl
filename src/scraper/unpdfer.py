@@ -1,6 +1,8 @@
 from pdfminer.pdfinterp import PDFResourceManager, process_pdf
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
+from pdfminer.pdfparser import PDFParser, PDFDocument
+from pdfminer.pdftypes import PDFObjRef
 from cStringIO import StringIO
 
 from time import mktime, strptime
@@ -36,7 +38,7 @@ class UnPDFer:
             # fix the non-utf8 string ...
             result = retstr.getvalue()
             txt = result.encode('ascii','ignore')
-            
+
             # TODO: clean this up, I feel like I'm doing the converstion twice ...
             # http://stackoverflow.com/a/16503222/2154772
             parser = PDFParser(fp)
@@ -44,8 +46,19 @@ class UnPDFer:
             parser.set_document(doc)
             doc.set_parser(parser)
             doc.initialize()
-            datestring = doc.info[0]['CreationDate'][2:-7]
-            ts = strptime(datestring, "%Y%m%d%")
+            #print doc.info[0]['CreationDate'].resolve()
+            
+            #
+            # as messed up as this is ... CreationDate isn't always the same type as it
+            # comes back from the PDFParser, so we need to base it on an instance of a
+            # basestring or not.  I'm starting to dislike PDFs ...
+            #
+            if not isinstance(doc.info[0]['CreationDate'],basestring):
+                datestring = doc.info[0]['CreationDate'].resolve()[2:-7]
+            else:
+                datestring = doc.info[0]['CreationDate'][2:-7]
+            #print "working on '{0}'...".format(datestring)
+            ts = strptime(datestring, "%Y%m%d%H%M%S")
             created = datetime.fromtimestamp(mktime(ts))
 
             retVal = (created,txt,True)

@@ -112,13 +112,16 @@ create table if not exists scraps(
 scrapid int not null auto_increment primary key,
 orgid int not null,
 foreign key (orgid) references orgs(orgid), 
-scrapdatetime datetime not null,
+startdatetime datetime not null,
+enddatetime datetime not null,
 success bool not null,
 urlid int not null,
 foreign key (urlid) references urls(urlid)
 );
 
 create index scraps_scrapid on scraps(scrapid);
+create index scraps_startdatetime on scraps(startdatetime);
+create index scraps_enddatetime on scraps(enddatetime);
 create index scraps_urlid on scraps(urlid);
 
 create table if not exists docs(

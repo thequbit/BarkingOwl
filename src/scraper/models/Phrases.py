@@ -9,10 +9,10 @@ class Phrases:
     __con = False
 
     def __connect(self):
-        con = mdb.connect(host=__sql_server__,
-                          user=__sql_username__,
-                          passwd=__sql_password__,
-                          db=__sql_database__,
+        con = mdb.connect(host   = __dbcreds__.__server__,
+                          user   = __dbcreds__.__username__,
+                          passwd = __dbcreds__.__password__,
+                          db     = __dbcreds__.__database__,
                          )
         return con
 

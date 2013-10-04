@@ -1,20 +1,14 @@
 import ConfigParser
 
-config = ConfigParser.ConfigParser()
-config.read('config.ini')
-
-__sql_username__ = config.get('sql2api','username')
-__sql_password__ = config.get('sql2api','password')
-__sql_database__  = config.get('sql2api','database')
-__sql_server__ = config.get('sql2api','server')
+import __dbcreds__
 
 import MySQLdb as mdb
 import _mysql as mysql
 try:
-    con = mdb.connect(host = __sql_server__,
-                      user = __sql_username__,
-                      passwd = __sql_password__,
-                      db = __sql_database__,
+    con = mdb.connect(host   = __dbcreds__.__server__,
+                      user   = __dbcreds__.__username__,
+                      passwd = __dbcreds__.__password__,
+                      db     = __dbcreds__.__database__,
                      )
 except Exception,e:
     raise Exception("sql2api error - could not connect to the database:\n\n\t{0}".format(e))

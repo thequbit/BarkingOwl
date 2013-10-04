@@ -96,7 +96,7 @@ def scrapper(url,downloaddirectory,linklevel):
                 break
     return docs,retsuccess
 
-def scrapurls(orgname,urls,destinationdirectory,linklevel):
+def scrapeurls(orgname,urls,destinationdirectory,linklevel):
     retsuccess = True
     report("Working on {0} URLs for '{1}'...".format(len(urls),orgname))
     for _url in urls:
@@ -146,7 +146,17 @@ def scrapurls(orgname,urls,destinationdirectory,linklevel):
 #    return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts]
 #             for i in range(wanted_parts) ]
 
-def runscraper(destinationdirectory,linklevel):
+def deletefiles(folder):
+    for the_file in os.listdir(folder):
+        file_path = os.path.join(folder, the_file)
+        try:
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+        except:
+            pass
+
+#def runscraper(destinationdirectory,linklevel):
+
     #allurls = []
     #for url in geturls():
     #    allurls.append(url)
@@ -156,23 +166,48 @@ def runscraper(destinationdirectory,linklevel):
     #    t = threading.Thread(target=scrapurls, args=(urls,destinationdirectory,linklevel))
     #    t.start()
 
+class Scrapper(threading.Thread):
+
+    def __init__(self,orgname,urls,destdir,linklevel):
+        threading.Thread.__init__(self)
+        self.orgname = orgname
+        self.urls = urls
+        self.destdir = destdir
+        self.linklevel = linklevel
+
+    def run(self):
+        scrapeurls(self.orgname,
+                   self.urls,
+                   self.destdir,
+                   self.linklevel
+        )
+        print "hi."
+
+lol = lambda lst, sz: [lst[i:i+sz] for i in range(0, len(lst), sz)]
+
+def runscrapper(destdir,linklevel):
     # get all of the organizations from the database and pull the urls for each of them
     orgs = getorgs()
+    thrds = []
     for org in orgs:
         orgid,orgname,description,creationdatetime,ownerid = org
-        print "[{0}] {1}:".format(orgid,orgname)
+        report("[{0}] {1}:".format(orgid,orgname))
         urls = geturls(orgid)
-        #print "Found {0} urls".format(len(urls))
-        scrapurls(orgname,urls,destinationdirectory,linklevel)
+        threadcount = 8
+        parts = lol(urls,len(urls)/6)
+        i = 1
+        for part in parts:
+            thrd = Scrapper(orgname,part,destdir,linklevel)
+            thrd.start()
+            thrds.append(thrd)
+            report("Successfully Launched Thread #{0}".format(i))
+            
+            i += 1
+    for thrd in thrds:
+        thrd.join()
 
-def deletefiles(folder):
-    for the_file in os.listdir(folder):
-        file_path = os.path.join(folder, the_file)
-        try:
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-        except:
-            pass
+        #print "Found {0} urls".format(len(urls))
+        #srapurls(orgname,urls,destinationdirectory,linklevel)
 
 # Taken from http://stackoverflow.com/users/165216/paul-mcguire
 # http://stackoverflow.com/questions/1557571/how-to-get-time-of-a-python-program-execution
@@ -185,7 +220,7 @@ def main():
     linklevel = 1
     report("Running scraper with a link depth of {0} ...".format(linklevel))
     starttime = clock()
-    runscraper('./downloads',linklevel)
+    runscrapper('./downloads',linklevel)
     report("Cleaning up downloaded files.")
     deletefiles('./downloads')
     endtime = clock()

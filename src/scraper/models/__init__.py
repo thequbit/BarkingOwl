@@ -22,7 +22,7 @@ from Userurls import Userurls
 from Phrases import Phrases
 from Urlphrases import Urlphrases
 from Runs import Runs
-from Scraps import Scraps
+from Scrapes import Scrapes
 from Docs import Docs
 from Finds import Finds
 

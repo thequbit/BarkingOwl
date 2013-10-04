@@ -109,4 +109,21 @@ class Urls:
 #        raise Exception("sql2api error - myfunct() failed with error:\n\n\t".format(e))
 #        return row
 
+    def byorgid(self,orgid):
+        try:
+            con = self.__connect()
+            with con:
+                cur = con.cursor()
+                cur.execute("SELECT * FROM urls WHERE orgid = %s",(self.__sanitize(orgid)))
+                rows = cur.fetchall()
+                print "row count = {0}".format(len(rows))
+                cur.close()
+            con.close()
+            _urls = []
+            for row in rows:
+                _urls.append(row)
+        except Exception, e:
+            Exception("sql2api error - byorgid() failed with error:\n\n\t{0}".format(e))
+        return _urls
+
 

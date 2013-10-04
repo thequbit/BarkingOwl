@@ -4,7 +4,7 @@ import re
 
 import __dbcreds__
 
-class Docs:
+class Scrapes:
 
     __con = False
 
@@ -23,13 +23,13 @@ class Docs:
             valueout = valuein
         return valuein
 
-    def add(self,orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid):
+    def add(self,orgid,startdatetime,enddatetime,success,urlid):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("INSERT INTO docs(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                            (self.__sanitize(orgid),self.__sanitize(docurl),self.__sanitize(filename),self.__sanitize(linktext),self.__sanitize(downloaddatetime),self.__sanitize(creationdatetime),self.__sanitize(doctext),self.__sanitize(dochash),self.__sanitize(urlid))
+                cur.execute("INSERT INTO scrapes(orgid,startdatetime,enddatetime,success,urlid) VALUES(%s,%s,%s,%s,%s)",
+                            (self.__sanitize(orgid),self.__sanitize(startdatetime),self.__sanitize(enddatetime),self.__sanitize(success),self.__sanitize(urlid))
                            )
                 cur.close()
                 newid = cur.lastrowid
@@ -38,13 +38,13 @@ class Docs:
             raise Exception("sql2api error - add() failed with error:\n\n\t{0}".format(e))
         return newid
 
-    def get(self,docid):
+    def get(self,scrapeid):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("SELECT * FROM docs WHERE docid = %s",
-                            (docid)
+                cur.execute("SELECT * FROM scrapes WHERE scrapeid = %s",
+                            (scrapeid)
                            )
                 row = cur.fetchone()
                 cur.close()
@@ -58,37 +58,37 @@ class Docs:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("SELECT * FROM docs")
+                cur.execute("SELECT * FROM scrapes")
                 rows = cur.fetchall()
                 cur.close()
-            _docs = []
+            _scrapes = []
             for row in rows:
-                _docs.append(row)
+                _scrapes.append(row)
             con.close()
         except Exception, e:
             raise Exception("sql2api error - getall() failed with error:\n\n\t{0}".format(e))
-        return _docs
+        return _scrapes
 
-    def delete(self,docid):
+    def delete(self,scrapeid):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("DELETE FROM docs WHERE docid = %s",
-                            (self.__sanitize(docid))
+                cur.execute("DELETE FROM scrapes WHERE scrapeid = %s",
+                            (self.__sanitize(scrapeid))
                            )
                 cur.close()
             con.close()
         except Exception, e:
             raise Exception("sql2api error - delete() failed with error:\n\n\t{0}".format(e))
 
-    def update(self,docid,orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid):
+    def update(self,scrapeid,orgid,startdatetime,enddatetime,success,urlid):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("UPDATE docs SET orgid = %s,docurl = %s,filename = %s,linktext = %s,downloaddatetime = %s,creationdatetime = %s,doctext = %s,dochash = %s,urlid = %s WHERE docid = %s",
-                            (self.__sanitize(orgid),self.__sanitize(docurl),self.__sanitize(filename),self.__sanitize(linktext),self.__sanitize(downloaddatetime),self.__sanitize(creationdatetime),self.__sanitize(doctext),self.__sanitize(dochash),self.__sanitize(urlid),self.__sanitize(docid))
+                cur.execute("UPDATE scrapes SET orgid = %s,startdatetime = %s,enddatetime = %s,success = %s,urlid = %s WHERE scrapeid = %s",
+                            (self.__sanitize(orgid),self.__sanitize(startdatetime),self.__sanitize(enddatetime),self.__sanitize(success),self.__sanitize(urlid),self.__sanitize(scrapeid))
                            )
                 cur.close()
             con.close()
@@ -109,19 +109,4 @@ class Docs:
 #        raise Exception("sql2api error - myfunct() failed with error:\n\n\t".format(e))
 #        return row
 
-    def gethashs(self,urlid):
-        #try:
-            con = self.__connect()
-            with con:
-                cur = con.cursor()
-                cur.execute("SELECT dochash AS hash FROM docs WHERE urlid = %s",(self.__sanitize(urlid)))
-                rows = cur.fetchall()
-                cur.close()
-            _hashs = []
-            for row, in rows:
-                _hashs.append(row)
-            con.close()
-        #except Exception, e:
-        #    raise Exception("sql2api error - gethashs() failed with error:\n\n\t{0}".format(e))
-            return _hashs
 

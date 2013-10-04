@@ -1,6 +1,7 @@
 ####Scraper####
 
-This tool pulls a list of urls and phrases from the database, and spits out processed pdf docs.
+This tool pulls a list of orgs, and then urls within those orgs from the database, and spits out processed 
+pdf text, hash, and meta data.
 
 
 #####Files#####
@@ -11,8 +12,6 @@ This tool pulls a list of urls and phrases from the database, and spits out proc
     dler.py - this file downloads all of the links it gets from pdfimp
 
     unpdfer.py - this will pre-process and then pdf->text a downloaded pdf
-
-    scrapper.py - this file takes in a url, and spits out processed pdfs
 
     runscrapper.py - this is the entry point, and interfaces to the database and scrapper.py
 

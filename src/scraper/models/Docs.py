@@ -23,13 +23,13 @@ class Docs:
             valueout = valuein
         return valuein
 
-    def add(self,orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid):
+    def add(self,orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid,processed):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("INSERT INTO docs(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                            (self.__sanitize(orgid),self.__sanitize(docurl),self.__sanitize(filename),self.__sanitize(linktext),self.__sanitize(downloaddatetime),self.__sanitize(creationdatetime),self.__sanitize(doctext),self.__sanitize(dochash),self.__sanitize(urlid))
+                cur.execute("INSERT INTO docs(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid,processed) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                            (self.__sanitize(orgid),self.__sanitize(docurl),self.__sanitize(filename),self.__sanitize(linktext),self.__sanitize(downloaddatetime),self.__sanitize(creationdatetime),self.__sanitize(doctext),self.__sanitize(dochash),self.__sanitize(urlid),self.__sanitize(processed))
                            )
                 cur.close()
                 newid = cur.lastrowid
@@ -82,13 +82,13 @@ class Docs:
         except Exception, e:
             raise Exception("sql2api error - delete() failed with error:\n\n\t{0}".format(e))
 
-    def update(self,docid,orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid):
+    def update(self,docid,orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid,processed):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("UPDATE docs SET orgid = %s,docurl = %s,filename = %s,linktext = %s,downloaddatetime = %s,creationdatetime = %s,doctext = %s,dochash = %s,urlid = %s WHERE docid = %s",
-                            (self.__sanitize(orgid),self.__sanitize(docurl),self.__sanitize(filename),self.__sanitize(linktext),self.__sanitize(downloaddatetime),self.__sanitize(creationdatetime),self.__sanitize(doctext),self.__sanitize(dochash),self.__sanitize(urlid),self.__sanitize(docid))
+                cur.execute("UPDATE docs SET orgid = %s,docurl = %s,filename = %s,linktext = %s,downloaddatetime = %s,creationdatetime = %s,doctext = %s,dochash = %s,urlid = %s,processed = %s WHERE docid = %s",
+                            (self.__sanitize(orgid),self.__sanitize(docurl),self.__sanitize(filename),self.__sanitize(linktext),self.__sanitize(downloaddatetime),self.__sanitize(creationdatetime),self.__sanitize(doctext),self.__sanitize(dochash),self.__sanitize(urlid),self.__sanitize(processed),self.__sanitize(docid))
                            )
                 cur.close()
             con.close()

@@ -23,13 +23,13 @@ class Scrapes:
             valueout = valuein
         return valuein
 
-    def add(self,orgid,startdatetime,enddatetime,success,urlid):
+    def add(self,orgid,startdatetime,enddatetime,success,urlid,linkcount):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("INSERT INTO scrapes(orgid,startdatetime,enddatetime,success,urlid) VALUES(%s,%s,%s,%s,%s)",
-                            (self.__sanitize(orgid),self.__sanitize(startdatetime),self.__sanitize(enddatetime),self.__sanitize(success),self.__sanitize(urlid))
+                cur.execute("INSERT INTO scrapes(orgid,startdatetime,enddatetime,success,urlid,linkcount) VALUES(%s,%s,%s,%s,%s,%s)",
+                            (self.__sanitize(orgid),self.__sanitize(startdatetime),self.__sanitize(enddatetime),self.__sanitize(success),self.__sanitize(urlid),self.__sanitize(linkcount))
                            )
                 cur.close()
                 newid = cur.lastrowid
@@ -82,13 +82,13 @@ class Scrapes:
         except Exception, e:
             raise Exception("sql2api error - delete() failed with error:\n\n\t{0}".format(e))
 
-    def update(self,scrapeid,orgid,startdatetime,enddatetime,success,urlid):
+    def update(self,scrapeid,orgid,startdatetime,enddatetime,success,urlid,linkcount):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("UPDATE scrapes SET orgid = %s,startdatetime = %s,enddatetime = %s,success = %s,urlid = %s WHERE scrapeid = %s",
-                            (self.__sanitize(orgid),self.__sanitize(startdatetime),self.__sanitize(enddatetime),self.__sanitize(success),self.__sanitize(urlid),self.__sanitize(scrapeid))
+                cur.execute("UPDATE scrapes SET orgid = %s,startdatetime = %s,enddatetime = %s,success = %s,urlid = %s,linkcount = %s WHERE scrapeid = %s",
+                            (self.__sanitize(orgid),self.__sanitize(startdatetime),self.__sanitize(enddatetime),self.__sanitize(success),self.__sanitize(urlid),self.__sanitize(linkcount),self.__sanitize(scrapeid))
                            )
                 cur.close()
             con.close()

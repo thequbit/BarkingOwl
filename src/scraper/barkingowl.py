@@ -87,6 +87,10 @@ class Scrapper(threading.Thread):
         scrapeid = self.scrapes.add(orgid,start,end,success,urlid,linkcount)
         return scrapeid
 
+    def updatescrape(self,scrapeid,orgid,start,end,success,urlid,linkcount):
+        #scrapes = Scrapes()
+        self.scrapes.update(scrapeid,orgid,start,end,success,urlid,linkcount)
+
     def adddoc(self,orgid,docurl,filename,linktext,downloaddatetime,
                creationdatetime,doctext,dochash,urlid,processed):
         #docs = Docs()
@@ -141,6 +145,9 @@ class Scrapper(threading.Thread):
         for _url in orgurls:
             urlid,orgid,url,urlname,description,createdatettime,creationuserid = _url
             starttime = strftime("%Y-%m-%d %H:%M:%S")
+            
+            scrapeid = self.addscrape(orgid,starttime,"",False,urlid,0)
+
             self.r("Scrapper Started at: {0}".format(starttime))
             self.r("Running on: '{0}'".format(urlname))
             self.r("    {0}".format(url))
@@ -173,7 +180,7 @@ class Scrapper(threading.Thread):
                 else:
                     self.r("Skipping PDF, already processed.")
             endtime = strftime("%Y-%m-%d %H:%M:%S")
-            self.addscrape(orgid,starttime,endtime,retsuccess,urlid,linkcount)
+            self.updatescrape(scrapeid,orgid,starttime,endtime,retsuccess,urlid,linkcount)
         return retsuccess
 
     #def split_list(alist, wanted_parts=1):
@@ -255,7 +262,7 @@ def report(text):
     print "[Scrapper] {0}".format(text)
 
 def main():
-    linklevel = 1
+    linklevel = 5
     report("Running scraper with a link depth of {0} ...".format(linklevel))
     starttime = clock()
     runscrapper('./downloads',linklevel)

@@ -224,7 +224,7 @@ def runscrapper(destdir,linklevel):
         report("Dispatching threads for '{0}'".format(orgname))
         orgurls = geturls(orgid)
         threadcount = 8
-        parts = lol(orgurls,threadcount-2)
+        parts = lol(orgurls,len(orgurls)/(threadcount-2))
         #parts = []
         #parts.append(urls[0])
         #parts.append(urls[1])

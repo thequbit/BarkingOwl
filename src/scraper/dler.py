@@ -11,7 +11,7 @@ class DLer:
     def __init__(self,verbose):
         self._verbose = verbose
 
-    def _report(self,text):
+    def report(self,text):
         if self._verbose:
             print "[DLer    ] {0}".format(text)
 
@@ -37,7 +37,7 @@ class DLer:
         return dt
 
     def _download(self,url,dest):
-        success = True
+            success = True
         try: 
             urlfile = url[url.rfind("/")+1:]
             t = time.time() 
@@ -57,8 +57,9 @@ class DLer:
         files = []
         for _link in links:
             link,text = _link
-            self._report("Download '{0}'...".format(link))
+            self.report("Download '{0}'...".format(link))
             filename,datetime,success = self._download(link,destdir)
+            #print "success = {0}".format(success)
             if not success:
                 retsuccess = False
                 break

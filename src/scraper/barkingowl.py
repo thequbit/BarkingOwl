@@ -1,13 +1,7 @@
-#from sqlalchemy import *
-#from sqlalchemy.orm import (
-#    sessionmaker,
-#    )
-#from sqlalchemy.ext.declarative import declarative_base
-
-#from scrapper import scrapper
-
+import time
 from time import strftime
 from time import clock
+import re
 import os
 import threading
 
@@ -19,13 +13,6 @@ from unpdfer import UnPDFer
 # sql2api db access 
 from models import *
 
-#engine = create_engine('mysql://bouser:password123%%%@lisa.duffnet.local', echo=True)
-#engine.execute("USE barkingowl")
-#Session = sessionmaker(bind=engine)
-#DBSession = Session()
-#Base = declarative_base()
-#Base.metadata.create_all(engine)
-
 verbose = True
 
 def report(text):
@@ -34,8 +21,8 @@ def report(text):
 
 def unpdf(filename,scrub):
     unpdfer = UnPDFer(verbose)
-    created,pdftext,pdfhash,tokens,success = unpdfer.unpdf(filename=filename,SCRUB=scrub)
-    return created,pdftext,pdfhash,tokens,success
+    created,pdftext,pdfhash,tokens,success,exceptiontext = unpdfer.unpdf(filename=filename,SCRUB=scrub)
+    return created,pdftext,pdfhash,tokens,success,exceptiontext
 
 def downloadfiles(links,destinationfolder):
     dler = DLer(verbose)
@@ -54,7 +41,10 @@ def getorgs():
 
 def geturls(orgid):
     urls = Urls()
-    orgurls = urls.byorgid(orgid)
+    #orgurls = urls.byorgid(orgid)
+    orgurls = []
+    orgurls.append(urls.get(25))
+    orgurls.append(urls.get(10))
     return orgurls
 
 def gethashs(urlid):
@@ -74,69 +64,64 @@ def adddoc(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doct
 
 def scrapper(url,downloaddirectory,linklevel):
     docs = []
-    retsuccess = True
     links = getpdfs(url,linklevel)
     if not os.path.exists(downloaddirectory):
         os.makedirs(downloaddirectory)
     files,success = downloadfiles(links=links,destinationfolder=downloaddirectory)
-    #print "Downloaded {0} files with a status of {1}".format(len(files),success)
+    #eport("Downloaded {0} files with a status of {1}".format(len(files),success)
     if not success:
-        #print "unable to download files."
+        report("ERROR: Unable to download all files.")
         retsuccess = False
     else:
+        report("Processing PDF documents for URL:")
+        report("\t{0}".format(url))
         for f in files:
             url,filename,linktext,downloaded = f
-            created,pdftext,pdfhash,tokens,success = unpdf(filename,True)
+            created,pdftext,pdfhash,tokens,success,exceptiontext = unpdf(filename,True)
             #print "done with pdf, with sucess of '{0}'".format(success)
             if success:
                 docs.append((url,filename,linktext,downloaded,created,pdftext,pdfhash,tokens))
             else:
                 #print "pdf->txt unsuccessful"
-                retsuccess = False
-                break
-    return docs,retsuccess
+                #retsuccess = False
+                report("ERROR: {0}".format(exceptiontext))
+                #
+                # TODO: Log exceptiontext
+                #
+                #break
+    return docs
 
 def scrapeurls(orgname,urls,destinationdirectory,linklevel):
+    
+    time.sleep(1)
+
     retsuccess = True
     report("Working on {0} URLs for '{1}'...".format(len(urls),orgname))
     for _url in urls:
         urlid,orgid,url,urlname,description,createdatettime,creationuserid = _url
         starttime = strftime("%Y-%m-%d %H:%M:%S")
-        report("Started at: {0}".format(starttime))
+        report("Scrapper Started at: {0}".format(starttime))
         report("Running on: '{0}'".format(urlname))
         report("    {0}".format(url))
-        docs,success = scrapper(url,destinationdirectory,linklevel)
-        if success:
-            report("Found {0} pdf documents.".format(len(docs)))
-            for doc in docs:
-                hashs = gethashs(urlid)
-                docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,tokens = doc
-                if not dochash in hashs:
-                    report("Pushing to database doc: {0} [{1}]".format(filename,dochash))
-                    #docid = adddoc(docurl,filename,linktext,downloaded,created,doctext,dochash,url.id)
-                    
-                    # cleanup the text a bit.  get rid of repeating spaces and \n to save DB space
-                    doctext = re.sub(' +',' ',doctext)
-                    doctext = re.sub('\n+','\n',doctext)
+        docs = scrapper(url,destinationdirectory,linklevel)
+        #if success:
+        report("Found {0} pdf documents.".format(len(docs)))
+        for doc in docs:
+            hashs = gethashs(urlid)
+            docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,tokens = doc
+            if not dochash in hashs:
+                report("Pushing to database [{0}]:".format(dochash))
+                report("\t{0}".format(filename))
+                #docid = adddoc(docurl,filename,linktext,downloaded,created,doctext,dochash,url.id)
+               
+                # cleanup the text a bit.  get rid of repeating spaces and \n to save DB space
+                doctext = re.sub(' +',' ',doctext)
+                doctext = re.sub('\n+','\n',doctext)
 
-                    docid = adddoc(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid)
+                docid = adddoc(orgid,docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,urlid)
 
-                    #
-                    #   NOTE: Removing this section for first rev of site
-                    #
-                    #phrases = getphrases(urlid)
-                    #for p in phrases:
-                    #    phrase,userid,urlphraseid = p
-                    #    if phrase in text:
-                    #        now = strftime("%Y-%m-%d %H:%M:%S")
-                    #        savefind(urlphraseid,now,docid)
-                    #    # TODO: send notification to user
-                else:
-                    report("Skipping doc, already processed.")
-        else:
-            # TODO: fail more eligantly than this ...
-            retsuccess = False
-            break
+            else:
+                report("Skipping pdf, already processed.")
         endtime = strftime("%Y-%m-%d %H:%M:%S")
         addscrape(orgid,starttime,endtime,retsuccess,urlid)
     return retsuccess
@@ -155,6 +140,13 @@ def deletefiles(folder):
         except:
             pass
 
+def deletefile(filename):
+    try:
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+    except:
+        pass
+
 #def runscraper(destinationdirectory,linklevel):
 
     #allurls = []
@@ -168,8 +160,9 @@ def deletefiles(folder):
 
 class Scrapper(threading.Thread):
 
-    def __init__(self,orgname,urls,destdir,linklevel):
+    def __init__(self,threadnumber,orgname,urls,destdir,linklevel):
         threading.Thread.__init__(self)
+        self.threadnumber = threadnumber
         self.orgname = orgname
         self.urls = urls
         self.destdir = destdir
@@ -181,7 +174,7 @@ class Scrapper(threading.Thread):
                    self.destdir,
                    self.linklevel
         )
-        print "hi."
+        report("Thread #{0} Exiting.".format(self.threadnumber))
 
 lol = lambda lst, sz: [lst[i:i+sz] for i in range(0, len(lst), sz)]
 
@@ -189,19 +182,24 @@ def runscrapper(destdir,linklevel):
     # get all of the organizations from the database and pull the urls for each of them
     orgs = getorgs()
     thrds = []
+    report("Working on {0} Organizations.".format(len(orgs)))
     for org in orgs:
         orgid,orgname,description,creationdatetime,ownerid = org
-        report("[{0}] {1}:".format(orgid,orgname))
+        report("Dispatching threads for '{0}'".format(orgname))
         urls = geturls(orgid)
-        threadcount = 8
-        parts = lol(urls,len(urls)/6)
+        threadcount = 2
+        parts = lol(urls,1)
+        #arts = []
+        #arts.append(urls[0])
+        #arts.append(urls[1])
+        print parts
         i = 1
         for part in parts:
-            thrd = Scrapper(orgname,part,destdir,linklevel)
+            report("Launching Thread ...")
+            thrd = Scrapper(i,orgname,part,destdir,linklevel)
             thrd.start()
             thrds.append(thrd)
-            report("Successfully Launched Thread #{0}".format(i))
-            
+            report("Successfully Launched Thread #{0}".format(i)) 
             i += 1
     for thrd in thrds:
         thrd.join()

@@ -57,14 +57,26 @@ class UnPDFer:
                 datestring = doc.info[0]['CreationDate'].resolve()[2:-7]
             else:
                 datestring = doc.info[0]['CreationDate'][2:-7]
-            #print "working on '{0}'...".format(datestring)
-            ts = strptime(datestring, "%Y%m%d%H%M%S")
+
+            # test to see if it's just the data, or date and time
+            if len(datestring) != 14:
+                # just the date, need to grab the time
+                #print doc.info[0]['CreationTime']
+                #for key, value in doc.info[0].iteritems() :
+                #    print key
+                #timestring = doc.info[0]['CreationTime'][2:-7]
+                #datetimestring = "".join(datestring,timestring)
+                ts = strptime(datestring, "%Y%m%d")
+            else:
+                # hanging out together
+                ts = strptime(datestring, "%Y%m%d%H%M%S")
+
             created = datetime.fromtimestamp(mktime(ts))
 
-            retVal = (created,txt,True)
+            retVal = (created,txt,True,"")
             retstr.close()
-        except:
-            retVal = (None,"",False)
+        except Exception, exceptiontext:
+            retVal = (None,"",False,exceptiontext)
             pass
         return retVal
 
@@ -79,11 +91,11 @@ class UnPDFer:
     def unpdf(self,filename,SCRUB=False):
         self._report("Processing '{0}'".format(filename))
         with open(filename,'rb') as fp:
-            created,pdftext,success = self._pdf2text(fp)
+            created,pdftext,success,exceptiontext = self._pdf2text(fp)
             if SCRUB:
                 pdftext = self._scrubtext(pdftext)
             pdfhash = hashlib.md5(fp.read()).hexdigest()
             _tokens = nltk.word_tokenize(pdftext)
             tokens = nltk.FreqDist(word.lower() for word in _tokens)
-        return (created,pdftext,pdfhash,tokens,success)
+        return (created,pdftext,pdfhash,tokens,success,exceptiontext)
 

@@ -13,15 +13,26 @@ class pdfimp:
     _processed = []
     _pdfs = []
 
+    _linkcount = 0
+
     def __init__(self,verbose):
         self._verbose = verbose
+
+        self._processed = []
+        self._pdfs = []
+        
+        self._linkcount = 0
+
+    def _cleanup(self):
+        self._processed = []
+        self._pdfs = []
 
     def _nonascii(self,s):
         return "".join(i for i in s if ord(i)<128)
 
     def _report(self,text):
         if self._verbose == True:
-            print "[PDFImp  ] {0}".format(text)
+            print "[PDFImp    ] {0}".format(text)
    
     def _createlink(self,siteurl,link):
         if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
@@ -53,6 +64,7 @@ class pdfimp:
                 links.append((match,link,linktext))
         except:
             links = []
+        self._linkcount += len(links)
         return links
     
     def _typelink(self,link,filesize):
@@ -145,4 +157,7 @@ class pdfimp:
 
     def getpdfs(self,maxlevel,siteurl,links,level=0,filesize=1024,verbose=False):
         self._followlinks(maxlevel,siteurl,links,level=0,filesize=1024,verbose=False)
-        return self._pdfs
+        pdfs = self._pdfs
+        linkcount = self._linkcount
+        self._cleanup()
+        return pdfs,linkcount

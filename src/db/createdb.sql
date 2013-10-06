@@ -116,7 +116,8 @@ startdatetime datetime not null,
 enddatetime datetime not null,
 success bool not null,
 urlid int not null,
-foreign key (urlid) references urls(urlid)
+foreign key (urlid) references urls(urlid),
+linkcount int not null
 );
 
 create index scrapes_scrapid on scrapes(scrapeid);
@@ -136,7 +137,8 @@ creationdatetime datetime,
 doctext text not null,
 dochash text not null,
 urlid int not null,
-foreign key (urlid) references urls(urlid)
+foreign key (urlid) references urls(urlid),
+processed bool not null
 );
 
 create index docs_docid on docs(docid);

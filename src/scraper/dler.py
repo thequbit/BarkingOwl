@@ -40,8 +40,9 @@ class DLer:
         success = True
         try: 
             urlfile = url[url.rfind("/")+1:]
-            t = time.time() 
-            _filename = "{0}/{1}_{2}.download".format(dest,urlfile,t)
+            t = time.time()
+            r = randint(0,10000000)
+            _filename = "{0}/{1}_{2}{3}.download".format(dest,urlfile,t,r)
             while self._fileexists(_filename):
                 _filename = "{0}/{1}_{2}.download".format(dest,urlfile,t)
             #print _filename

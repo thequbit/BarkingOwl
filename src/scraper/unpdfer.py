@@ -21,7 +21,7 @@ class UnPDFer:
 
     def _report(self,text):
         if self._verbose:
-            print "[unPDFer ] {0}".format(text)
+            print "[unPDFer   ] {0}".format(text)
 
     def _pdf2text(self,fp):
         try:

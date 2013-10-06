@@ -13,7 +13,7 @@ class DLer:
 
     def report(self,text):
         if self._verbose:
-            print "[DLer    ] {0}".format(text)
+            print "[DLer      ] {0}".format(text)
 
     def _fileexists(self,filename):
         exists = False
@@ -37,7 +37,7 @@ class DLer:
         return dt
 
     def _download(self,url,dest):
-            success = True
+        success = True
         try: 
             urlfile = url[url.rfind("/")+1:]
             t = time.time() 

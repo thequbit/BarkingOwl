@@ -53,7 +53,8 @@ name varchar(256) not null,
 description text,
 createdatetime datetime not null,
 creationuserid int not null,
-foreign key (creationuserid) references users(userid)
+foreign key (creationuserid) references users(userid),
+linklevel int not null
 );
 
 create index urls_urlid on urls(urlid);

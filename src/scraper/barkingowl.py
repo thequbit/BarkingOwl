@@ -463,10 +463,10 @@ def getorgs():
 
 def geturls(orgid):
     urls = Urls()
-    #orgurls = urls.byorgid(orgid)
-    orgurls = []
-    orgurls.append(urls.get(25))
-    orgurls.append(urls.get(10))
+    orgurls = urls.byorgid(orgid)
+    #orgurls = []
+    #orgurls.append(urls.get(25))
+    #orgurls.append(urls.get(10))
     return orgurls
 
 

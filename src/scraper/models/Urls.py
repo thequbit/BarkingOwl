@@ -23,13 +23,13 @@ class Urls:
             valueout = valuein
         return valuein
 
-    def add(self,orgid,url,name,description,createdatetime,creationuserid):
+    def add(self,orgid,url,name,description,createdatetime,creationuserid,linklevel):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("INSERT INTO urls(orgid,url,name,description,createdatetime,creationuserid) VALUES(%s,%s,%s,%s,%s,%s)",
-                            (self.__sanitize(orgid),self.__sanitize(url),self.__sanitize(name),self.__sanitize(description),self.__sanitize(createdatetime),self.__sanitize(creationuserid))
+                cur.execute("INSERT INTO urls(orgid,url,name,description,createdatetime,creationuserid,linklevel) VALUES(%s,%s,%s,%s,%s,%s,%s)",
+                            (self.__sanitize(orgid),self.__sanitize(url),self.__sanitize(name),self.__sanitize(description),self.__sanitize(createdatetime),self.__sanitize(creationuserid),self.__sanitize(linklevel))
                            )
                 cur.close()
                 newid = cur.lastrowid
@@ -82,13 +82,13 @@ class Urls:
         except Exception, e:
             raise Exception("sql2api error - delete() failed with error:\n\n\t{0}".format(e))
 
-    def update(self,urlid,orgid,url,name,description,createdatetime,creationuserid):
+    def update(self,urlid,orgid,url,name,description,createdatetime,creationuserid,linklevel):
         try:
             con = self.__connect()
             with con:
                 cur = con.cursor()
-                cur.execute("UPDATE urls SET orgid = %s,url = %s,name = %s,description = %s,createdatetime = %s,creationuserid = %s WHERE urlid = %s",
-                            (self.__sanitize(orgid),self.__sanitize(url),self.__sanitize(name),self.__sanitize(description),self.__sanitize(createdatetime),self.__sanitize(creationuserid),self.__sanitize(urlid))
+                cur.execute("UPDATE urls SET orgid = %s,url = %s,name = %s,description = %s,createdatetime = %s,creationuserid = %s,linklevel = %s WHERE urlid = %s",
+                            (self.__sanitize(orgid),self.__sanitize(url),self.__sanitize(name),self.__sanitize(description),self.__sanitize(createdatetime),self.__sanitize(creationuserid),self.__sanitize(linklevel),self.__sanitize(urlid))
                            )
                 cur.close()
             con.close()
@@ -116,7 +116,7 @@ class Urls:
                 cur = con.cursor()
                 cur.execute("SELECT * FROM urls WHERE orgid = %s",(self.__sanitize(orgid)))
                 rows = cur.fetchall()
-                print "row count = {0}".format(len(rows))
+                #print "row count = {0}".format(len(rows))
                 cur.close()
             con.close()
             _urls = []
@@ -125,5 +125,4 @@ class Urls:
         except Exception, e:
             Exception("sql2api error - byorgid() failed with error:\n\n\t{0}".format(e))
         return _urls
-
 

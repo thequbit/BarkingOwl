@@ -179,7 +179,11 @@ class Scrapper(threading.Thread):
                 siteurlmatch = False
             retval = (False,link)
         else:
-            retval = (True,siteurl + link)
+            # the clarkson, ny case ...
+            if link[:2] == "../":
+                retval = (True,siteurl + link[2:])
+            else:
+                retval = (True,siteurl + link)
         return retval
 
     def _getpagelinks(self,siteurl,url):
@@ -479,8 +483,8 @@ def runscrapper(destdir,linklevel):
         orgid,orgname,description,creationdatetime,ownerid = org
         report("Dispatching threads for '{0}'".format(orgname))
         orgurls = geturls(orgid)
-        threadcount = 16
-        parts = lol(orgurls,len(orgurls)/(threadcount-2))
+        threadcount = 4
+        parts = lol(orgurls,len(orgurls)/4)
         #parts = []
         #parts.append(urls[0])
         #parts.append(urls[1])

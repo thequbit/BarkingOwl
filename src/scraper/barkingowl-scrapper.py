@@ -13,11 +13,17 @@ from datetime import datetime
 import urllib
 import urllib2
 
+from urlparse import urljoin
+
+import simplejson
+
 import magic
 
 from bs4 import BeautifulSoup
 
 #import nltk
+
+import pika
 
 from pdfminer.pdfinterp import PDFResourceManager, process_pdf
 from pdfminer.converter import TextConverter
@@ -37,43 +43,80 @@ from models import *
 
 verbose = True
 
-class Scrapper(threading.Thread):
+class Scrapper(): #threading.Thread):
 
     verbose = True
 
-    def __init__(self,threadnumber,orgid,orgname,orgurls,destdir,linklevel):
+    def __init__(self,destdir,address='localhost'): #self,threadnumber,orgid,orgname,orgurls,destdir,linklevel):
 
-        threading.Thread.__init__(self)
+        self._busy = False
 
-        self.threadnumber = threadnumber
-        self.orgid = orgid
-        self.orgname = orgname
-        self.orgurls = orgurls
+        #threading.Thread.__init__(self)
+
+        #self.threadnumber = threadnumber
+        #self.orgid = orgid
+        #self.orgname = orgname
+        #self.orgurls = orgurls
         self.destdir = destdir
-        self.linklevel = linklevel
+        self._addr = address
+        self.scrapperid = randint(1000,10000000000)
+        #self.linklevel = linklevel
 
         #self.imp = pdfimp(self.verbose)
 
+        # pdfimp crawler
         self._processed = []
+        self._badlinks = []
         self._linkcount = 0
 
+        # database access
         self.urls= Urls()
         self.orgs = Orgs()
         self.scrapes = Scrapes()
         self.docs = Docs()
 
-    def run(self):
-        self.r("Thread #{0} Loaded".format(self.threadnumber))
-        self.scrapeurls(self.orgname,
-                        self.orgurls,
-                        self.destdir,
-                        self.linklevel
-        )
-        self.r("Thread #{0} Exiting".format(self.threadnumber))
+        self._queuename = 'barkingowl'
+
+        # setup incomming messages
+        self._reqcon = pika.BlockingConnection(pika.ConnectionParameters(
+                                                 host=self._addr))
+        self._reqchan = self._reqcon.channel()
+        self._reqchan.exchange_declare(exchange='d2s_barkingowl',
+                              type='fanout')
+        result = self._reqchan.queue_declare(exclusive=True)
+        queue_name = result.method.queue
+        self._reqchan.queue_bind(exchange='d2s_barkingowl',
+                                 queue=queue_name)
+        self._reqchan.basic_consume(self._reqcallback,
+                                    queue=queue_name,
+                                    no_ack=True
+                                   )
+
+        # setup outgoing messages
+        #self._respcon = pika.BlockingConnection(pika.ConnectionParameters(
+        #                                       host=self._addr))
+        #self._respchan = self._respcon.channel()
+        #self._respchan.queue_declare(queue=self._queuename)
+        # setup outgoing messages
+        self._respcon = pika.BlockingConnection(pika.ConnectionParameters(
+                                                  host=self._addr))
+        self._respchan = self._respcon.channel()
+        #self._respchan.queue_declare(queue=self._queuename,durable=True)
+        self._respchan.exchange_declare(exchange='s2d_barkingowl',
+                                          type='fanout')
+
+#    def run(self):
+#        self.r("Thread #{0} Loaded".format(self.threadnumber))
+#        self.scrapeurls(self.orgname,
+#                        self.orgurls,
+#                        self.destdir,
+#                        self.linklevel
+#        )
+#        self.r("Thread #{0} Exiting".format(self.threadnumber))
 
     def r(self,text):
         if self.verbose:
-            print "[Scrapper {0}] {1}".format(self.name,text)
+            print "[Scrapper {0}] {1}".format(self.scrapperid,text)
 
     #def _unpdf(self,filename):
     #    unpdfer = UnPDFer(self._threadnumber)
@@ -171,29 +214,38 @@ class Scrapper(threading.Thread):
             pass
         return retVal
 
-    def _createlink(self,siteurl,link):
+    def _checkmatch(self,siteurl,link):
+        sitematch = True
         if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
              (len(link) >= 8 and link[0:8].lower() == "https://") or
-             (len(link) >= 3 and link[0:6].lower() == "ftp://") ):
+             (len(link) >= 3 and link[0:6].lower() == "ftp://") ): 
             if(link[:link.find("/",7)+1] != siteurl):
-                siteurlmatch = False
-            retval = (False,link)
-        else:
-            # the clarkson, ny case ...
-            if link[:2] == "../":
-                retval = (True,siteurl + link[2:])
-            else:
-                retval = (True,siteurl + link)
+                sitematch = False
+        return sitematch
+        #if siteurl.split('//')[1].split('/')[0] == link.split('/')[0]:
+        #else:
+        #    # the clarkson, ny case ...
+        #    if link[:2] == "../":
+        #        retval = (True,siteurl + link[2:])
+        #    else:
+        #        retval = (True,siteurl + link)
+
         return retval
 
     def _getpagelinks(self,siteurl,url):
         links = []
         #self.r("Getting page links ...")
-        _sucess,linktype = self._typelink(url,1024)
+        success,linktype = self._typelink(url,1024)
+        if success == False:
+            #self.r("Saving link as bad, not processing.")
+            self._badlinks.append(url)
+            return links,success
+
+        sucess = True
         #self.r("Link Type = '{0}'".format(linktype))
         if linktype != "text/html":
             #self._report("Ignoring on-html URL.")
-            return links
+            return links,False
         try:
             html = urllib2.urlopen(url)
             soup = BeautifulSoup(html)
@@ -204,13 +256,34 @@ class Scrapper(threading.Thread):
                     linktext = unicode(tag.string).strip()
                 else:
                     linktext = ""
-                match,link = self._createlink(siteurl,tag['href'])
-                links.append((match,link,linktext))
+                rawhref = tag['href']
+                #print "rawhref = {0}".format(rawhref)
+        
+                # there are some websites that have absolutely links that go above 
+                # the root ... why this is I have no idea, but this is my super not
+                # cool way to solve it!
+                uprelparts = rawhref.split('../')
+                if len(uprelparts) > 1:
+                    for i in range(1,len(uprelparts)-1):
+                        newhref = "../".join(uprelparts[i:])
+                        #print "rawhref = {0}".format(rawhref)
+                        #print "newhref = {0}".format(newhref)
+                        abslink = urljoin(siteurl,newhref)
+                        match = self._checkmatch(siteurl,rawhref)
+                        links.append((match,abslink,linktext))
+
+                # process and add the full link
+                abslink = urljoin(siteurl,rawhref)
+                match = self._checkmatch(siteurl,rawhref)
+                links.append((match,abslink,linktext))
+                #print ""
         except Exception, e:
             links = []
+            sucess = False
             self.r("ERROR: An error has happened in _getpagelinks():\n\n\t{0}".format(e))
+        #raise Exception("stop - debug")
         self._linkcount += len(links)
-        return links
+        return links,True
 
     def _typelink(self,link,filesize):
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
@@ -221,6 +294,7 @@ class Scrapper(threading.Thread):
             filetype = magic.from_buffer(payload,mime=True)
         except Exception, e:
             success = False;
+            #self.r("Link returned an error: {0}".format(e))
             #elf.r("ERROR: An error has happened in _typelink():\n\n\t{0}".format(e))
         return success,filetype
 
@@ -244,8 +318,10 @@ class Scrapper(threading.Thread):
             t = time.time()
             r = randint(0,10000000)
             _filename = "{0}/{1}_{2}{3}.download".format(self.destdir,urlfile,t,r)
+            # regen the name if it already exists
             while self._fileexists(_filename):
-                _filename = "{0}/{1}_{2}.download".format(self.destdir,urlfile,t)
+                r = randint(0,10000000)
+                _filename = "{0}/{1}_{2}{3}.download".format(self.destdir,urlfile,t,r)
             #print _filename
             filename,_headers = urllib.urlretrieve(url,_filename)
             #self.r("Successfully downloaded file:")
@@ -257,7 +333,7 @@ class Scrapper(threading.Thread):
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         return (filename,isodatetime,success)
 
-    def _processpdf(self,urlid,docurl,linktext):
+    def _processpdf(self,orgid,urlid,docurl,linktext):
         #self._report("Found Document: '{0}'".format(gotlink))
         self.r("Saving: {0}".format(docurl))
         filename,downloaddatetime,success = self._downloadfile(docurl)
@@ -269,13 +345,13 @@ class Scrapper(threading.Thread):
                 processed = True
             else:
                 processed = False
-            docid = self._adddoc(self.orgid,docurl,filename,linktext,downloaddatetime,
+            docid = self._adddoc(orgid,docurl,filename,linktext,downloaddatetime,
                                  creationdatetime,doctext,dochash,urlid,processed)
         else:
             self.r("Ignoring document due to error")
             pass
 
-    def _followlinks(self,urlid,maxlevel,siteurl,links,level=0,filesize=1024):
+    def _followlinks(self,orgid,urlid,maxlevel,siteurl,links,level=0,filesize=1024):
         retlinks = []
         if( level >= maxlevel ):
             #self.r("ALERT: Max link depth reached")
@@ -284,13 +360,19 @@ class Scrapper(threading.Thread):
             level += 1
             for _link in links:
                 link,linktext = _link
-                # see if we can ignore this link
-                if link in self._processed:
+                # see if we have already processed the link, or it is 404/bad link
+                if link in self._processed or link in self._badlinks:
                     continue
                 ignored = 0
                 #self.r("Getting links for '{0}'".format(link))
-                allpagelinks = self._getpagelinks(siteurl,link)
-                _m,_l = self._createlink(siteurl,link)
+                allpagelinks,success = self._getpagelinks(siteurl,link)
+                if success == False:
+                    continue
+                #print allpagelinks
+                #raise Exception("stop - debug")
+                #_m,_l = self._createlink(siteurl,link)
+                _l = urljoin(siteurl,link)
+                #_m = self._checkmatch(tag['href'])
                 self._processed.append(_l)
                 self.r("Processing {0} links for {1}".format(len(allpagelinks),link))
                 
@@ -303,7 +385,7 @@ class Scrapper(threading.Thread):
                         pagelinks.append((link,linktext))
 
                 # Follow all of the link within the 'thelink' array
-                gotlinks = self._followlinks(urlid=urlid,maxlevel=maxlevel,siteurl=siteurl,
+                gotlinks = self._followlinks(orgid=orgid,urlid=urlid,maxlevel=maxlevel,siteurl=siteurl,
                                              links=pagelinks,level=level,filesize=filesize)
                 
                 # go through all of the returned links and see if any of them are pdfs
@@ -318,7 +400,7 @@ class Scrapper(threading.Thread):
                             #self._pdfs.append((gotlink,linktext))
                             #self.r("PDF found, processing and saving to database")
                             self._processed.append(gotlink)
-                            self._processpdf(urlid,gotlink,linktext)
+                            self._processpdf(orgid,urlid,gotlink,linktext)
                         else:
                             ignored += 1
                 
@@ -332,7 +414,7 @@ class Scrapper(threading.Thread):
                             #self._pdfs.append((thelink,linktext))
                             retlinks.append((thelink,linktext))
                             self._processed.append(thelink)
-                            self._processpdf(urlid,thelink,linktext)
+                            self._processpdf(orgid,urlid,thelink,linktext)
                             #self._report("Added '{0}'".format(thelink))
                             #self._report("Found Document: '{0}'".format(thelink))
                         else:
@@ -382,74 +464,42 @@ class Scrapper(threading.Thread):
 #                    #break
 #        return docs,linkcount
 
-    def scrapeurls(self,orgname,orgurls,destinationdirectory,linklevel):
-        time.sleep(1)
-        retsuccess = True
-        self.r("Working on {0} URLs for '{1}'...".format(len(orgurls),orgname))
-        for _url in orgurls:
-            urlid,orgid,url,urlname,description,createdatetime,creationuserid,linklevel = _url
-            starttime = strftime("%Y-%m-%d %H:%M:%S")
+    def scrapeurl(self,orgname,orgurl):
+        #time.sleep(1)
+        #retsuccess = True
+        #self.r("Working on {0} URLs for '{1}'...".format(len(orgurls),orgname))
+        #for _url in orgurls:
+
+        urlid,orgid,url,urlname,description,createdatetime,creationuserid,linklevel = orgurl
+
+        starttime = strftime("%Y-%m-%d %H:%M:%S")
+           
+        scrapeid = self._addscrape(orgid,starttime,"",False,urlid,0)
+
+        self.r("Scrapper Started at: {0}".format(starttime))
+        self.r("Link Level = {0}".format(linklevel))
+        self.r("Running on: '{0}'".format(urlname))
+        self.r("    {0}".format(url))
+        self.r("")
             
-            scrapeid = self._addscrape(orgid,starttime,"",False,urlid,0)
+        self._processed = []
+        self._badlinks = []
+        links=[(url,url)]
+  
+        success = True
+        try:
+            self._followlinks(orgid=orgid,urlid=urlid,maxlevel=linklevel,siteurl=url,
+                                links=links,level=0,filesize=2048)
+        except Exception, e:
+            self.r("ERROR: A general error happened while executing _followlinks():\n\t{0}".format(e))
+            success = False
 
-            self.r("Scrapper Started at: {0}".format(starttime))
-            self.r("Link Level = {0}".format(linklevel))
-            self.r("Running on: '{0}'".format(urlname))
-            self.r("    {0}".format(url))
-            self.r("")
-            
-            self._processed = []
-            links=[(url,url)]
-            self._followlinks(urlid=urlid,maxlevel=linklevel,siteurl=url,
-                              links=links,level=0,filesize=2048)
-
-            #docs,linkcount = self.scrapper(url,destinationdirectory,linklevel)
-            #if success:
-            #self.r("Found {0} PDF documents".format(len(docs)))
-            #for doc in docs:
-            #    hashs = self._gethashsurlid)
-            #    docurl,filename,linktext,downloaddatetime,creationdatetime,doctext,dochash,tokens,processed = doc
-                #self.r("this hash: {0}".format(dochash))
-                #self.r("doc hashs: {0}".format(hashs))
-            #    if not dochash in hashs or dochash == "":
-            #        self.r("Pushing PDF to database:")
-            #        self.r("\t{0}".format(docurl))
-                    #self.r("\t{0}".format(filename))
-                    #docid = _adddoc(docurl,filename,linktext,downloaded,created,doctext,dochash,url.id)
-                   
-                    # cleanup the text a bit.  get rid of repeating spaces and \n to save DB space
-            #        doctext = re.sub(' +',' ',doctext)
-            #        doctext = re.sub('\n+','\n',doctext)
-
-                    # prevents 'None' from being inserted into the database
-            #        if linktext == None:
-            #            linktext = ""
-
-            #        docid = self._adddoc(orgid,docurl,filename,linktext,downloaddatetime,
-            #                            creationdatetime,doctext,dochash,urlid,processed)
-
-            #    else:
-            #        self.r("PDF already processed, deleting local file")
-            #        self.deletefile(filename)
-            
-            endtime = strftime("%Y-%m-%d %H:%M:%S")
-            self._updatescrape(scrapeid,orgid,starttime,endtime,retsuccess,urlid,self._linkcount)
-            self._linkcount = 0
-        return retsuccess
-
-    #def split_list(alist, wanted_parts=1):
-    #    length = len(alist)
-    #    return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts]
-    #             for i in range(wanted_parts) ]
-
-    def deletefiles(self,folder):
-        for the_file in os.listdir(folder):
-            file_path = os.path.join(folder, the_file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-            except:
-                pass
+        endtime = strftime("%Y-%m-%d %H:%M:%S")
+        self._updatescrape(scrapeid,orgid,starttime,endtime,success,urlid,self._linkcount)
+        self._linkcount = 0
+        self.r("Scrapper Stopped at: {0}".format(endtime))
+        self.r("")
+        #return retsuccess
 
     def deletefile(self,filename):
         try:
@@ -458,70 +508,107 @@ class Scrapper(threading.Thread):
         except:
             pass
 
-lol = lambda lst, sz: [lst[i:i+sz] for i in range(0, len(lst), sz)]
+    def _fixurldate(self,rawurl):
+        urlid,orgid,url,urlname,description,createdatetimeiso,creationuserid,linklevel = rawurl
+        createdatetime = datetime.strptime(createdatetimeiso,"%Y-%m-%d %H:%M:%S")
+        returl = (urlid,orgid,url,urlname,description,createdatetime,creationuserid,linklevel)
+        return returl
 
-def getorgs():
-    orgs = Orgs()
-    allorgs = orgs.getall()
-    return allorgs
+    def _reqcallback(self,ch,method,properties,body):
+        self.r("Processing New Message ...")
+        try:
+            response = simplejson.loads(body)
+            if response['command'] == 'url_payload' and response['scrapperid'] == self.scrapperid and self._busy == False:
+                self._busy = True
+                self.r("Processing URL Payload ...")
+                orgname = response['orgname']
+                rawurl = simplejson.loads(response['url_json'])
+                url = self._fixurldate(rawurl)
+                self.scrapeurl(orgname,
+                               url,
+                )
+                self._busy = False
+                #self._requesturl()
+                #self.reqchan.basic_ack(delivery_tag = method.delivery_tag)
+                #self.r("Done with URL!")
 
-def geturls(orgid):
-    urls = Urls()
-    orgurls = urls.byorgid(orgid)
-    #orgurls = []
-    #orgurls.append(urls.get(25))
-    #orgurls.append(urls.get(10))
-    return orgurls
+        except Exception, e:
+           self.r("ERROR: an error happende while processing the message:\n\t{0}".format(e))
 
+    def _requesturl(self):
+        self.r("Sending URL Request ...")
+        body = {'scrapperid': self.scrapperid,
+                'command': 'url_request'}
+        jbody = simplejson.dumps(body)
+        #elf._respchan.basic_publish(exchange='',
+        #                       routing_key=self._queuename,
+        #                       body=jbody)
+        self._respchan.basic_publish(exchange='s2d_barkingowl',
+                                             routing_key='', #self._queuename,
+                                             body=jbody,
+                                             )
 
-def runscrapper(destdir,linklevel):
-    # get all of the organizations from the database and pull the urls for each of them
-    orgs = getorgs()
-    thrds = []
-    report("Working on {0} Organizations.".format(len(orgs)))
-    for org in orgs:
-        orgid,orgname,description,creationdatetime,ownerid = org
-        report("Dispatching threads for '{0}'".format(orgname))
-        orgurls = geturls(orgid)
-        threadcount = 4
-        parts = lol(orgurls,len(orgurls)/4)
-        #parts = []
-        #parts.append(urls[0])
-        #parts.append(urls[1])
-        #print parts
-        i = 1
-        for part in parts:
-            #print "part #{0} = {1}".format(i,part)
-            report("Launching Thread ...")
-            thrd = Scrapper(i,orgid,orgname,part,destdir,linklevel)
-            thrd.start()
-            thrds.append(thrd)
-            report("Successfully Launched Thread #{0}".format(i)) 
-            i += 1
-    for thrd in thrds:
-        thrd.join()
+    def start(self):
+        self.r("Starting Barking Owl Scrapper")
+        self._requesturl()
+        self.r("Starting Message Consuming Engine")
+        self._reqchan.start_consuming()
+        
+
+#def runscrapper(destdir,linklevel):
+#    # get all of the organizations from the database and pull the urls for each of them
+#    orgs = getorgs()
+#    thrds = []
+#    report("Working on {0} Organizations.".format(len(orgs)))
+#    for org in orgs:
+#        orgid,orgname,description,creationdatetime,ownerid = org
+#        report("Dispatching threads for '{0}'".format(orgname))
+#        orgurls = geturls(orgid)
+#        threadcount = 6
+#        chunksize = len(orgurls) / (threadcount-1)
+#        parts = lol(orgurls,chunksize)
+#        #parts = []
+#        #parts.append(urls[0])
+#        #parts.append(urls[1])
+#        #print parts
+#        i = 1
+#        for part in parts:
+#            #print "part #{0} = {1}".format(i,part)
+#            report("Launching Thread ...")
+#            thrd = Scrapper(i,orgid,orgname,part,destdir,linklevel)
+#            thrd.start()
+#            thrds.append(thrd)
+#            report("Successfully Launched Thread #{0}".format(i)) 
+#            i += 1
+#    for thrd in thrds:
+#        thrd.join()
 
         #print "Found {0} urls".format(len(urls))
         #srapurls(orgname,urls,destinationdirectory,linklevel)
 
 # Taken from http://stackoverflow.com/users/165216/paul-mcguire
 # http://stackoverflow.com/questions/1557571/how-to-get-time-of-a-python-program-execution
-def secondsToStr(t):
-    return "%d:%02d:%02d.%03d" % \
-        reduce(lambda ll,b : divmod(ll[0],b) + ll[1:],
-            [(t*1000,),1000,60,60])
+#def secondsToStr(t):
+#    return "%d:%02d:%02d.%03d" % \
+#        reduce(lambda ll,b : divmod(ll[0],b) + ll[1:],
+#            [(t*1000,),1000,60,60])
+#
+#def report(text):
+#    print "[Scrapper] {0}".format(text)
 
-def report(text):
-    print "[Scrapper] {0}".format(text)
-
-def main():
-    linklevel = 5
-    report("Running scraper with a link depth of {0} ...".format(linklevel))
-    starttime = clock()
-    runscrapper('./downloads',linklevel)
+#ef main():
+    #inklevel = 5
+    #eport("Running scraper with a link depth of {0} ...".format(linklevel))
+    #tarttime = clock()
+    #unscrapper('./downloads',linklevel)
     #report("Cleaning up downloaded files.")
     #deletefiles('./downloads')
-    endtime = clock()
-    report("Scrapper completed in {0}.".format(secondsToStr(endtime-starttime)))
-    
+    #ndtime = clock()
+    #eport("Scrapper completed in {0}.".format(secondsToStr(endtime-starttime)))
+
+def main():
+    download_directory = "./downloads"
+    scrapper = Scrapper(download_directory)
+    scrapper.start()
+
 main()

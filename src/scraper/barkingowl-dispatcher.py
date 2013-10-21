@@ -28,11 +28,11 @@ class Dispatcher():
         self._reqcon = pika.BlockingConnection(pika.ConnectionParameters(
                                                  host=self._addr))
         self._reqchan = self._reqcon.channel()
-        self._reqchan.exchange_declare(exchange='s2d_barkingowl',
+        self._reqchan.exchange_declare(exchange='barkingowl',
                               type='fanout')
         result = self._reqchan.queue_declare(exclusive=True)
         queue_name = result.method.queue
-        self._reqchan.queue_bind(exchange='s2d_barkingowl',
+        self._reqchan.queue_bind(exchange='barkingowl',
                                  queue=queue_name)
         self._reqchan.basic_consume(self._reqcallback,
                                     queue=queue_name,
@@ -44,7 +44,7 @@ class Dispatcher():
                                                   host=self._addr))
         self._respchan = self._respcon.channel()
         #self._respchan.queue_declare(queue=self._queuename,durable=True)
-        self._respchan.exchange_declare(exchange='d2s_barkingowl',
+        self._respchan.exchange_declare(exchange='barkingowl',
                                           type='fanout')
 
     def __del__(self):
@@ -106,13 +106,13 @@ class Dispatcher():
 
                 # create the url payload
                 payload = {'command': 'url_payload',
-                           'scrapperid': response['scrapperid'],
+                           'scraperid': response['scraperid'],
                            'orgname': orgname,
                            'url_json': simplejson.dumps(self._sanitizedate(url))}
                 jurl = simplejson.dumps(payload)
 
                 # send the message
-                self._respchan.basic_publish(exchange='d2s_barkingowl',
+                self._respchan.basic_publish(exchange='barkingowl',
                                              routing_key='', #self._queuename,
                                              body=jurl,
                                              )
@@ -121,7 +121,7 @@ class Dispatcher():
                 self._report("URL request processed:")
                 self._report("    Org name:    '{0}'".format(orgname))
                 self._report("    URL:         '{0}'".format(url[2]))
-                self._report("    Scrapper ID: '{0}'".format(response['scrapperid']))
+                self._report("    Scraper ID: '{0}'".format(response['scraperid']))
 
         except Exception,e:
            self._report("ERROR: bad message format: '{0}'".format(reponse))

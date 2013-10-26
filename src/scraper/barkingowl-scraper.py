@@ -3,6 +3,8 @@ import sched,time
 
 from datetime import datetime
 
+import simplejson
+
 from scraper import Scraper
 
 import pika
@@ -16,29 +18,29 @@ class Wrapper():
 
         self.r("Starting Barking Owl Scraper Wrapper ...")
 
-        self._queuename = 'barkingowl'
         self._addr = address
-
-        # setup incomming messages
+        self._queuename = 'barkingowl'
+        
+        # setup incomming message
         self._reqcon = pika.BlockingConnection(pika.ConnectionParameters(
                                                  host=self._addr))
         self._reqchan = self._reqcon.channel()
-        self._reqchan.exchange_declare(exchange=self._queuename,
+        self._reqchan.exchange_declare(exchange='barkingowl',
                               type='fanout')
         result = self._reqchan.queue_declare(exclusive=True)
         queue_name = result.method.queue
-        self._reqchan.queue_bind(exchange=self._queuename,
+        self._reqchan.queue_bind(exchange='barkingowl',
                                  queue=queue_name)
         self._reqchan.basic_consume(self._reqcallback,
                                     queue=queue_name,
-                                    no_ack=True
+                                    no_ack=True,
                                    )
 
         # setup outgoing messages
         self._respcon = pika.BlockingConnection(pika.ConnectionParameters(
                                                   host=self._addr))
         self._respchan = self._respcon.channel()
-        self._respchan.exchange_declare(exchange=self._queuename,
+        self._respchan.exchange_declare(exchange='barkingowl',
                                           type='fanout')
 
         self.r("Wrapper Started Successfully.")
@@ -54,14 +56,18 @@ class Wrapper():
 
     def start(self,download_directory):
         self.r("Starting the Scraper ...")
-        #self._scraper = Scraper(download_directory)
-        #self._scraper.start()
+        self._scraper = Scraper(download_directory)
+        self._scraper.start()
         #self._scraper.join()
         self.r("Scraper Started.")
+
+        self._reqchan.start_consuming()
 
         self.s = sched.scheduler(time.time, time.sleep)
         self.s.enter(5, 1, self.tick, ())
         self.s.run()
+
+        #self._reqchan.start_consuming()
 
     def tick(self):
         self.r("WD Tick")
@@ -71,14 +77,15 @@ class Wrapper():
                                      body='{"command": "wd_tick"}',
                                     )
 
+
     def _reqcallback(self,ch,method,properties,body):
         self.r("Processing New Message ...")
         try:
             response = simplejson.loads(body)
-            self.r("Message Body: {0}".format(response))
-            if reponse['command'] == 'request_status': # and response['scraperid'] == self._scraper.scraperid:
+            #self.r("Message Body: {0}".format(response))
+            if response['command'] == 'request_status': # and response['scraperid'] == self._scraper.scraperid:
                 self._busy = True
-                self.r("Processing STATUS payload ...")
+                self.r("Generating STATUS payload ...")
   
                 payload = {
                     'scraperid': self._scraper.scraperid,
@@ -106,7 +113,8 @@ class Wrapper():
                                              )
 
                 self.r("Payload processed successfully.")
-                self._busy = False
+                self._busy = False 
+
         except Exception, e:
             self.r("ERROR: an error happened while processing the message:\n\t{0}".format(e))
         return True

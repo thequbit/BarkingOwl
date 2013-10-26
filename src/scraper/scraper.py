@@ -479,8 +479,11 @@ class Scraper(threading.Thread):
         self.r("Processing New Message ...")
         try:
             response = simplejson.loads(body)
-            self.r("Message Body: {0}".format(response))
-            if response['command'] == 'url_payload' and response['scraperid'] == self.scraperid: #and self._busy == False:
+            self.r("\nMessage Body: {0}\n".format(response))
+            self.r("Command: {0}".format(response['command']))
+            self.r("Dest ScraperID: {0}".format(response['scraperid']))
+            self.r("Local ScraperID: {0}".format(self.scraperid))
+            if response['command'] == 'url_payload' and response['scraperid'] == '{0}'.format(self.scraperid): #and self._busy == False:
                 self._busy = True
                 self.r("Processing URL Payload ...")
                 orgname = response['orgname']

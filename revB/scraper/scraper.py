@@ -83,7 +83,7 @@ class Scraper(threading.Thread):
         jbody = simplejson.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
-    def typelink(self,link,filesize=1024):
+    def typelink(self,link,filesize=2024):
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
         success = True
         filetype = ""
@@ -158,8 +158,11 @@ class Scraper(threading.Thread):
             pass
         else:
             level += 1
+            print "Working on {0} links ...".format(len(links))
             for _link in links:
                 link,linktext = _link
+
+                print "{0}".format(link)
 
                 # we need to keep track of what links we have visited at each 
                 # level.  Here we are adding to our array each time a new level 
@@ -177,6 +180,7 @@ class Scraper(threading.Thread):
                 # get all of the links from the page
                 ignored = 0
                 success,allpagelinks = self.getpagelinks(self.status['urldata']['targeturl'],link)
+                #print "succes = {0}".format(success)
                 if success == False:
                     continue
 
@@ -192,23 +196,29 @@ class Scraper(threading.Thread):
                     if( match == True ):
                         pagelinks.append((link,linktext))
 
+                print "Number of Page Links: {0}".format(len(pagelinks))
+
                 # Some of the links that were returned from this page might be pdfs,
                 # if they are, add them to the list of pdfs to be returned 'retlinks'
                 for _thelink in pagelinks:
                    thelink,linktext = _thelink
-                   if not any(thelink in r for r in retlinks):
-                        success,linktype = self.typelink(thelink)
-                        if success == True and linktype == self.status['urldata']['doctype']:
-                            retlinks.append((thelink,linktext))
-                            self.status['processed'][level-1].append(thelink)
-                            #broadcast the doc to the bus!
-                            self.broadcastdoc(thelink,linktext)
-                        else:
-                            ignored += 1
+                   if not any(thelink in r for r in retlinks) and not any(thelink in r for r in self.status['processed']):
+                       success,linktype = self.typelink(thelink)
+                       if success == True:
+                           self.status['processed'][level-1].append(thelink)
+                           if linktype == self.status['urldata']['doctype']:
+                               retlinks.append((thelink,linktext))
+                               #broadcast the doc to the bus!
+                               self.broadcastdoc(thelink,linktext)
+                       else:
+                           ignored += 1
+                       print "{0} : {1} : {2}".format(success,linktype,thelink)
+                       #print retlinks
+
+                print "Starting to follow links to next level ..."
 
                 # Follow all of the link within the 'thelink' array
-                if not debug:
-                    gotlinks = self.followlinks(#orgid=orgid,
+                gotlinks = self.followlinks(#orgid=orgid,
                                            #urlid=urlid,
                                            #maxlevel=maxlevel,
                                            #siteurl=siteurl,
@@ -217,18 +227,19 @@ class Scraper(threading.Thread):
                                            #filesize=filesize,
                                           )
 
-                    # go through all of the returned links and see if any of them are docs
-                    for _gotlink in gotlinks:
-                        gotlink,linktext = _gotlink
-                        if not any(gotlink in r for r in retlinks):
-                            success,linktype = self.typelink(gotlink)
-                            if success == True and linktype in doctypes: 
-                                retlinks.append((gotlink,linktext))
-                                self.status['processed'][level-1].append(gotlink)
-                                #broadcast the doc to the bus!
-                                self.broadcastdoc(gotlink,linktext)
-                            else:
-                                ignored += 1
+                # go through all of the returned links and see if any of them are docs
+                for _gotlink in gotlinks:
+                    gotlink,linktext = _gotlink
+                    if not any(thelink in r for r in retlinks) and not any(thelink in r for r in self.status['processed']):
+                       success,linktype = self.typelink(gotlink)
+                       if success == True:
+                           self.status['processed'][level-1].append(gotlink)
+                           if linktype == self.status['urldata']['doctype']:
+                               retlinks.append((gotlink,linktext))
+                               #broadcast the doc to the bus!
+                               self.broadcastdoc(gotlink,linktext)
+                       else:
+                           ignored += 1
             level -= 1
         for l in links:
             if not l in self.status['processed']:

@@ -34,14 +34,22 @@ class Scraper(threading.Thread):
         self.respchan = self.respcon.channel()
         self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
-    def start(self,urldata):
+    def seturldata(self,urldata):
+        self.status['urldata'] = urldata
+
+    def run(self):
         print "Starting Scraper ..."
         self.broadcaststart()
-        self.status['urldata'] = urldata
         self.status['busy'] = True
         
+        # reset globals
+        self.status['processed'] = []
+        self.status['badlinks'] = []
+        self.status['linkcount'] = 0
+        self.status['level'] = -1        
+
         links = []
-        links.append((urldata['targeturl'],'<root>'))
+        links.append((self.status['urldata']['targeturl'],'<root>'))
         self.followlinks(links=links,
                          level=0)
         

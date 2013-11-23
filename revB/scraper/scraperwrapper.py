@@ -63,30 +63,66 @@ class ScraperWrapper():
             'message': packet
         }
         jbody = simplejson.dumps(payload)
+        time.sleep(.25)
+        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+
+    def broadcastsimplestatus(self):
+        isodatetime = strftime("%Y-%m-%d %H:%M:%S")
+
+        if self.scraper.status['urldata'] == {}:
+            targeturl = 'null'
+        else:
+            targeturl = self.scraper.status['urldata']['targeturl']
+
+        packet = {
+            #'status': self.scraper.status,
+            #'urldata': self.status['urldata'],
+            'busy': self.scraper.status['busy'],
+            'linkcount': self.scraper.status['linkcount'],
+            'processedlinkcount': len(self.scraper.status['processed']),
+            'badlinkcount': len(self.scraper.status['badlinks']),
+            'targeturl': targeturl,
+            'statusdatetime': str(isodatetime)
+        }
+        payload = {
+            'command': 'scraper_status_simple',
+            'sourceid': self.uid,
+            'destinationid': 'broadcast',
+            'message': packet
+        }
+        jbody = simplejson.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     # message handler
     def reqcallback(self,ch,method,properties,body):
-        response = simplejson.loads(body)
-        print "Processing Message:\n\t{0}".format(response)
-        if response['command'] == 'url_dispatch':
-            if response['destinationid'] == self.uid:
-                print "Launching Scraper on new URL."
-                print response
-                self.scraper.start(response['message'])
+        #try:
+            response = simplejson.loads(body)
+            if response['sourceid'] == self.uid:
+                return
+            #print "Processing Message:\n\t{0}".format(response['command'])
+            if response['command'] == 'url_dispatch':
+                if response['destinationid'] == self.uid:
+                    print "Launching Scraper on new URL."
+                    #print response
+                    self.scraper.seturldata(response['message'])
+                    self.scraper.start()
 
-        elif response['command'] == 'scraper_status':
-                #
-                # TODO: read status from Scraper thread and broadcast to bus
-                #
-                self.broadcaststats()
+            elif response['command'] == 'get_status':
+                print "Responding to Status Request."
+                self.broadcaststatus()
 
-        elif response['command'] == 'shutdown':
-            if response['destinationid'] == self.uid:
-                #
-                # TODO: stop Scraper thread
-                #
+            elif response['command'] == 'get_status_simple':
+                print "Responding to Simple Status Request."
+                self.broadcastsimplestatus()
 
-                # stop consuming messages, so ScraperWrapper can exit
-                self.reqchan.stop_consuming() 
+            elif response['command'] == 'shutdown':
+                if response['destinationid'] == self.uid:
+                    print "Shutting Down."
+                    # stop consuming messages, so ScraperWrapper can exit
+                    self.reqchan.stop_consuming()
+                    #
+                    # TODO: close out thread
+                    # 
+        #except:
+        #    print "Message Error"
 

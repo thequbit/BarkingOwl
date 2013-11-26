@@ -51,7 +51,7 @@ class Dispatcher():
             'doctype': doctype,
             'disparchdatetime': str(isodatetime),
         }
-        print "\n{0}\n".format(packet)
+        #print "\n{0}\n".format(packet)
         payload = {
             'command': 'url_dispatch',
             'sourceid': self.uid,
@@ -64,7 +64,7 @@ class Dispatcher():
     # message handler
     def reqcallback(self,ch,method,properties,body):
         response = simplejson.loads(body)
-        print "Processing Message:\n\t{0}".format(response)
+        #print "Processing Message:\n\t{0}".format(response)
         if response['command'] == 'scraper_available':
             if self.urlindex < 0:
                 self.urls = self.geturls()

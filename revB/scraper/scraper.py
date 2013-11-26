@@ -15,6 +15,7 @@ class Scraper(threading.Thread):
     def __init__(self,uid,address='localhost',exchange='barkingowl'):
 
         threading.Thread.__init__(self)
+        self._stop = threading.Event()
 
         self.uid = uid
 
@@ -37,8 +38,15 @@ class Scraper(threading.Thread):
     def seturldata(self,urldata):
         self.status['urldata'] = urldata
 
+    def stop(self):
+        print "I've been told to stop ..."
+        self._stop.set()
+
+    def stopped(self):
+        return self._stop.isSet()
+
     def run(self):
-        print "Starting Scraper ..."
+        #print "Starting Scraper ..."
         self.broadcaststart()
         self.status['busy'] = True
         
@@ -50,14 +58,16 @@ class Scraper(threading.Thread):
 
         links = []
         links.append((self.status['urldata']['targeturl'],'<root>'))
-        self.followlinks(links=links,
-                         level=0)
-        
+        try:
+            self.followlinks(links=links,
+                             level=0)
+        except:
+            print "Exiting Scraper."
         self.status['busy'] = False
         #
         # TODO: kill thread
         #
-        print "Stopping Scraper."
+        #print "Stopping Scraper."
 
     def broadcaststart(self):
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
@@ -91,7 +101,16 @@ class Scraper(threading.Thread):
         jbody = simplejson.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
-    def typelink(self,link,filesize=2024):
+    def typelink(self,link,filesize=1024):
+        
+        #
+        # See if we need to kill ourselves
+        #
+        if self.stopped():
+            print "I'm trying to exit ..."
+            self.stop()
+            raise Exception("Scraper Exiting.")
+
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
         success = True
         filetype = ""
@@ -166,11 +185,11 @@ class Scraper(threading.Thread):
             pass
         else:
             level += 1
-            print "Working on {0} links ...".format(len(links))
+            #print "Working on {0} links ...".format(len(links))
             for _link in links:
                 link,linktext = _link
 
-                print "{0}".format(link)
+                #print "{0}".format(link)
 
                 # we need to keep track of what links we have visited at each 
                 # level.  Here we are adding to our array each time a new level 
@@ -204,7 +223,7 @@ class Scraper(threading.Thread):
                     if( match == True ):
                         pagelinks.append((link,linktext))
 
-                print "Number of Page Links: {0}".format(len(pagelinks))
+                #print "Number of Page Links: {0}".format(len(pagelinks))
 
                 # Some of the links that were returned from this page might be pdfs,
                 # if they are, add them to the list of pdfs to be returned 'retlinks'
@@ -220,10 +239,10 @@ class Scraper(threading.Thread):
                                self.broadcastdoc(thelink,linktext)
                        else:
                            ignored += 1
-                       print "{0} : {1} : {2}".format(success,linktype,thelink)
+                       #print "{0} : {1} : {2}".format(success,linktype,thelink)
                        #print retlinks
 
-                print "Starting to follow links to next level ..."
+                #print "Starting to follow links to next level ..."
 
                 # Follow all of the link within the 'thelink' array
                 gotlinks = self.followlinks(#orgid=orgid,

@@ -6,6 +6,6 @@ def main():
     sw = ScraperWrapper()
     sw.start()
 
-    print "Exiting BarkingOwl-Scraper."
+    #print "Exiting BarkingOwl-Scraper."
 
 main()

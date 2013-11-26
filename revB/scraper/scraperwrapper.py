@@ -2,12 +2,15 @@ import pika
 import simplejson
 import uuid
 from time import strftime
+import threading
 
 from scraper import Scraper
 
-class ScraperWrapper():
+class ScraperWrapper(threading.Thread):
 
     def __init__(self,address='localhost',exchange='barkingowl'):
+
+        threading.Thread.__init__(self)
 
         self.uid = str(uuid.uuid4())
 
@@ -30,11 +33,11 @@ class ScraperWrapper():
         self.respchan = self.respcon.channel()
         self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
-    def start(self):
-        print "Listening for messages on Message Bus ..."
+    def run(self):
+        #print "Listening for messages on Message Bus ..."
         self.broadcastavailable()
         self.reqchan.start_consuming()
-       
+      
     def broadcastavailable(self):
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
@@ -102,13 +105,13 @@ class ScraperWrapper():
             #print "Processing Message:\n\t{0}".format(response['command'])
             if response['command'] == 'url_dispatch':
                 if response['destinationid'] == self.uid:
-                    print "Launching Scraper on new URL."
+                    #print "Launching Scraper on new URL."
                     #print response
                     self.scraper.seturldata(response['message'])
                     self.scraper.start()
 
             elif response['command'] == 'get_status':
-                print "Responding to Status Request."
+                #print "Responding to Status Request."
                 self.broadcaststatus()
 
             elif response['command'] == 'get_status_simple':
@@ -117,12 +120,16 @@ class ScraperWrapper():
 
             elif response['command'] == 'shutdown':
                 if response['destinationid'] == self.uid:
-                    print "Shutting Down."
+                    #print "Shutting Down."
                     # stop consuming messages, so ScraperWrapper can exit
                     self.reqchan.stop_consuming()
-                    #
-                    # TODO: close out thread
-                    # 
+                    print "Trying to kill scraper ..."
+                    self.scraper.stop()
+            elif response['command'] == 'global_shutdown':
+                self.reqchan.stop_consuming()
+                print "Trying to kill scraper ..."
+                self.scraper.stop()
+
         #except:
         #    print "Message Error"
 

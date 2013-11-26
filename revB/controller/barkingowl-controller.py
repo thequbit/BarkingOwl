@@ -2,7 +2,7 @@ from flask import Flask
 from flask import render_template
 from flask import request
 import simplejson
-
+import subprocess
 from time import strftime
 
 from models import *
@@ -14,6 +14,7 @@ app.template_folder = "templates"
 app.debug = True
 
 status = None
+dispatcherlaunched = False
 
 @app.route('/addurl', methods=['POST'])
 def add():
@@ -21,17 +22,16 @@ def add():
     success = False
     urlid = 0
     try:
-        if request.method == 'POST':
-            targeturl = request.form['targeturl']
-            maxlinklevel = request.form['maxlinklevel']
-            isodatetime = strftime("%Y-%m-%d %H:%M:%S")
-            # add url to database
-            urls = Urls()
-            urlid = urls.add(targeturl=targeturl,
-                maxlinklevel=maxlinklevel,
-                creationdatetime=isodatetime,
-                doctypeid=1, # application/pdf
-            )
+        targeturl = request.form['targeturl']
+        maxlinklevel = request.form['maxlinklevel']
+        isodatetime = strftime("%Y-%m-%d %H:%M:%S")
+        # add url to database
+        urls = Urls()
+        urlid = urls.add(targeturl=targeturl,
+            maxlinklevel=maxlinklevel,
+            creationdatetime=isodatetime,
+            doctypeid=1, # application/pdf
+        )
     except:
         success = False
     print "Exiting add()"
@@ -45,16 +45,48 @@ def delete():
     print "Entering delete()"
     success = True
     try:
-        if request.method == 'POST':
-            urlid = request.form['urlid']
-            urls = Urls()
-            urls.delete(urlid)
+        urlid = request.args['urlid']
+        urls = Urls()
+        urls.delete(urlid)
     except:
         success = False
     print "Exiting delete()"
     ret = {}
     ret['success'] = success 
     return simplejson.dumps(ret)
+
+@app.route('/launchdispatcher')
+def launchdispatcher():
+    print "Entering launchdispatcher()"
+    success = True
+    try:
+        if dispatcherlaunched == False:
+            subprocess.Popen(["python","../dispatcher/barkingowl-dispatcher.py"])
+            dispatcherlaunched == True
+        else:
+            success = False
+    except:
+        success = False
+    print "Exiting launchdispatcher()"
+    ret = {}
+    ret['success'] = success
+    ret['launched'] = dispatcherlaunched
+    return simplejson.dumps(ret)
+
+@app.route('/launchscraper', methods=['GET','POST'])
+def launchscraper():
+    #print "Entering launchscraper()"
+        success = True
+    #try:
+        count = int(request.args['count'])
+        for i in range(0,count):
+            subprocess.Popen(['python','../scraper/barkingowl-scraper.py'])
+    #except:
+    #    success = False
+    #print "Exiting launchscraper()"
+        ret = {}
+        ret['success'] = success
+        return simplejson.dumps(ret)
 
 @app.route('/status.json')
 def status():

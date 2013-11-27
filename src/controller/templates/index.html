@@ -1,14 +1,39 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <title>BarkingOwl Controller</title>
 </head>
 <body>
-  <center>
-  <form name="form" action="add" method="POST">
-  Target URL: <input type="text" name="targeturl"></br>
-  Max Link Level: <input type="text" name="maxlinklevel"></br>
-  <input type="submit" value="Submit">
-  </form>
-  <center>
+  
+  <div class="top">
+    <div class="box">
+	  <div id="addurl">
+        Target URL: <input type="text" name="targeturl"></br>
+        Max Link Level: <input type="text" name="maxlinklevel"></br>
+        <button onclick="addurl()">Add URL</button>
+		<div id="addurlsuccess"></div>
+      </div>
+	</div>
+  </div>
+  
+  <script type="text/javascript" src="jquery-1.10.2.js"></script>
+  <script>
+  
+    function addurl()
+	{
+	  $.getJSON("/addurl", function(data) {
+	    if(data.success == true) {
+          $("#addurlsuccess").html("<b>Success!</b>");
+		  $("#addurlsuccess").css("background-color: #D00000;");
+		}
+        else {
+		  $("#addurlsuccess").html("<b>Failed!</b>");
+		  $("#addurlsuccess").css("background-color: #00D000;");
+        }
+	  });
+	}
+  
+  </script>
+  
 </body>
 </html>

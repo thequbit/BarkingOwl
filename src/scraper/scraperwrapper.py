@@ -2,6 +2,7 @@ import pika
 import simplejson
 import uuid
 from time import strftime
+import time
 import threading
 
 from scraper import Scraper
@@ -20,6 +21,11 @@ class ScraperWrapper(threading.Thread):
         self.scraper = Scraper(self.uid)
 
         #setup message bus
+        self.respcon = pika.BlockingConnection(pika.ConnectionParameters(
+                                                           host=self.address))
+        self.respchan = self.respcon.channel()
+        self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
+
         self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
         self.reqchan = self.reqcon.channel()
         self.reqchan.exchange_declare(exchange=exchange,type='fanout')
@@ -28,16 +34,16 @@ class ScraperWrapper(threading.Thread):
         self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
         self.reqchan.basic_consume(self.reqcallback,queue=queue_name,no_ack=True)
 
-        self.respcon = pika.BlockingConnection(pika.ConnectionParameters(
-		                                           host=self.address))
-        self.respchan = self.respcon.channel()
-        self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
+
+        print "Scraper Wrapper INIT complete."
 
     def run(self):
         #print "Listening for messages on Message Bus ..."
         self.broadcastavailable()
+        time.sleep(1)
         self.reqchan.start_consuming()
-      
+        time.sleep(1)      
+
     def broadcastavailable(self):
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
@@ -66,7 +72,7 @@ class ScraperWrapper(threading.Thread):
             'message': packet
         }
         jbody = simplejson.dumps(payload)
-        time.sleep(.25)
+        time.sleep(.5)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def broadcastsimplestatus(self):
@@ -115,7 +121,7 @@ class ScraperWrapper(threading.Thread):
                 self.broadcaststatus()
 
             elif response['command'] == 'get_status_simple':
-                print "Responding to Simple Status Request."
+                #print "Responding to Simple Status Request."
                 self.broadcastsimplestatus()
 
             elif response['command'] == 'shutdown':

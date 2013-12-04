@@ -4,6 +4,9 @@ from flask import request
 import simplejson
 import subprocess
 from time import strftime
+import sys
+import signal
+from multiprocessing import Process
 
 from models import *
 
@@ -11,19 +14,23 @@ from status import Status
 
 app = Flask(__name__)
 app.template_folder = "templates"
+app.static_folder = "static"
 app.debug = True
 
 status = None
+server = None
 dispatcherlaunched = False
 
-@app.route('/addurl', methods=['POST'])
+@app.route('/addurl', methods=['GET'])
 def add():
-    print "Entering add()"
-    success = False
-    urlid = 0
-    try:
-        targeturl = request.form['targeturl']
-        maxlinklevel = request.form['maxlinklevel']
+        print "Entering add()"
+        success = True
+        urlid = 0
+    #try:
+        # read values from URL
+        targeturl = request.args['targeturl']
+        maxlinklevel = request.args['maxlinklevel']
+        
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         # add url to database
         urls = Urls()
@@ -32,15 +39,15 @@ def add():
             creationdatetime=isodatetime,
             doctypeid=1, # application/pdf
         )
-    except:
-        success = False
-    print "Exiting add()"
-    ret = {}
-    ret['success'] = success
-    ret['urlid'] = urlid
-    return simplejson.dumps(ret)
+    #except:
+    #    success = False
+        print "Exiting add()"
+        ret = {}
+        ret['success'] = success
+        ret['urlid'] = urlid
+        return simplejson.dumps(ret)
 
-@app.route('/deleteurl', methods=['POST'])
+@app.route('/deleteurl', methods=['GET'])
 def delete():
     print "Entering delete()"
     success = True
@@ -73,7 +80,7 @@ def launchdispatcher():
     ret['launched'] = dispatcherlaunched
     return simplejson.dumps(ret)
 
-@app.route('/launchscraper', methods=['GET','POST'])
+@app.route('/launchscraper', methods=['GET'])
 def launchscraper():
     #print "Entering launchscraper()"
         success = True
@@ -104,16 +111,34 @@ def status():
     ret['status'] = status.status
     return simplejson.dumps(ret)
 
+@app.route('/jquery-1.10.2.min.js')
+def jquery():
+    return render_template('jquery-1.10.2.min.js')
+
 @app.route('/')
 def index():
     print "Entering index()"
     print "Exiting index()"
     return render_template('index.html')
 
+def shutdown_server():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+
+def signal_handler(signal, frame):
+    print "hi."
+    status.stop()
+    sys.exit()
+
 if __name__ == "__main__":
     print "Application Starting ..."
     
     status = Status()
+    
+    signal.signal(signal.SIGINT, signal_handler)
+
     status.start()
 
     host = '0.0.0.0'

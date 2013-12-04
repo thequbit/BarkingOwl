@@ -95,25 +95,39 @@ def launchscraper():
         ret['success'] = success
         return simplejson.dumps(ret)
 
-@app.route('/status.json')
+@app.route('/systemshutdown', methods=['GET'])
+def systemshutdown():
+    success = True
+    subprocess.Popen(['python','../tools/globalshutdown.py'])
+    ret = {}
+    ret['success'] = success
+    return simplejson.dumps(ret)
+
+@app.route('/scraperstatus')
 def status():
     print "Entering status()"
     success = True
-    json = "{}"
-    try:
-        json = simplejson.dumps(status.status)
-        print "STATUS:\n{0}".format(json)
-    except:
-        success = False
+    json = []
+    #try:
+    stats = status.getstatus()
+    #json = simplejson.dumps(stats)
+    #print "STATUS:\n{0}".format(json)
+    #except:
+    #    success = False
+    #    status = []
     print "Exiting status()"
     ret = {}
     ret['success'] = success
-    ret['status'] = status.status
+    ret['status'] = stats
     return simplejson.dumps(ret)
 
 @app.route('/jquery-1.10.2.min.js')
 def jquery():
     return render_template('jquery-1.10.2.min.js')
+
+@app.route('/datetime.format.js')
+def datetimeformat():
+    return render_template('datetime.format.js')
 
 @app.route('/')
 def index():

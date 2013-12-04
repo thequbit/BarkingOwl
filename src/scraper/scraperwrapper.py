@@ -18,6 +18,8 @@ class ScraperWrapper(threading.Thread):
         self.address = address
         self.exchange = exchange
 
+        self.interval = 2500
+
         self.scraper = Scraper(self.uid)
 
         #setup message bus
@@ -39,12 +41,14 @@ class ScraperWrapper(threading.Thread):
 
     def run(self):
         #print "Listening for messages on Message Bus ..."
+        threading.Timer(self.interval, self.broadcastavailable).start()
         self.broadcastavailable()
-        time.sleep(1)
         self.reqchan.start_consuming()
-        time.sleep(1)      
 
     def broadcastavailable(self):
+        if self.scraper.status['busy'] == True:
+            return
+
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'availabledatetime': str(isodatetime)

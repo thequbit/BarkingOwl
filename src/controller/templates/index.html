@@ -2,16 +2,34 @@
 <html lang="en">
 <head>
   <title>BarkingOwl Controller</title>
+  
+  <style>
+  
+  div.input {
+    padding-left: 10px;
+    padding-bottom: 5px;
+  }
+
+  div.box {
+    border:1px solid #a1a1a1;
+    padding: 5px 5px 5px 5px;
+    width: 250px;
+  }
+  
+  </style>
+
 </head>
 <body>
   
   <div class="top">
     <div class="box">
       <div id="addurl">
-        Target URL: <input type="text" id="targeturl"></br>
-        Max Link Level: <input type="text" id="maxlinklevel"></br>
+        Target URL:</br>
+          <div class="input"><input type="text" id="targeturl" size="32"></div>
+        Max Link Level:</br>
+          <div class="input"><input type="text" id="maxlinklevel" size="32"></div>
         <button onclick="addurl()">Add URL</button>
-		<div id="addurlsuccess"></div>
+        <div id="addurlsuccess"></div>
       </div>
 	</div>
   </div>
@@ -23,15 +41,13 @@
     {
       var targeturl = $("#targeturl").val();
       var maxlinklevel = $("#maxlinklevel").val();
-      var url = "/addurl?targeturl=" + targeturl + "&maxlinklevel" + maxlinklevel;
+      var url = "addurl?targeturl=" + targeturl + "&maxlinklevel=" + maxlinklevel;
       $.getJSON(url, function(data) {
         if(data.success == true) {
-          $("#addurlsuccess").html("<b>Success!</b>");
-          $("#addurlsuccess").css("background-color: #D00000;");
+          $("#addurlsuccess").html('<b style="color: #00D000;">Success!</b>');
         }
         else {
-          $("#addurlsuccess").html("<b>Failed!</b>");
-	  $("#addurlsuccess").css("background-color: #00D000;");
+          $("#addurlsuccess").html('<b style="color: #00D000;">Failed!</b>');
         }
       });
     }
@@ -40,3 +56,4 @@
   
 </body>
 </html>
+

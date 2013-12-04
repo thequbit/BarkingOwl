@@ -64,9 +64,18 @@ class Status(threading.Thread):
         self.reqchan.stop_consuming()
         sys.exit()
 
+    def getstatus(self):
+        stats = []
+        for key,value in self.status.iteritems():
+            stats.append({'scraperid': key,'status': value})
+            print value
+        return stats
+
     def reqcallback(self,ch,method,properties,body):
         response = simplejson.loads(body)
         if response['command'] == 'scraper_status_simple':
             self.status[response['sourceid']] = response['message']
         if response['command'] == 'scraper_shutdown':
             self.status.pop(request['sourceid'],None)
+        if response['command'] == 'global_shutdown':
+            self.status = {}

@@ -68,7 +68,6 @@ class Status(threading.Thread):
         stats = []
         for key,value in self.status.iteritems():
             stats.append({'scraperid': key,'status': value})
-            print value
         return stats
 
     def reqcallback(self,ch,method,properties,body):

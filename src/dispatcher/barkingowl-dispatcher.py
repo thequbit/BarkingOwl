@@ -71,7 +71,7 @@ class Dispatcher():
                 self.urlindex = len(self.urls)-1
             if self.urlindex >= 0:
                 self.sendurl(self.urls[self.urlindex],response['sourceid'])
-                #self.urlindex -= 1
+                self.urlindex -= 1
                 print "URL dispatched to '{0}'".format(response['sourceid'])
             else:
                 print "No URLs available for dispatch, ignoring request."

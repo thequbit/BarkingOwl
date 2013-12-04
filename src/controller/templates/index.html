@@ -59,23 +59,35 @@
 
   div.scraperstatus {
     padding: 8px 8px 8px 8px;
-    width: 400px;
+    /* width: 400px; */
     border: 1px solid #D0D0D0;
     /*display: inline;*/
   }
 
   div.notbusy {
+    width: 365px;
     margin: 3px 3px 3px 3px;
     padding: 3px 3px 3px 3px;
     background-color: lightgreen;
     font-family: "Courier New";
+    display: inline;
   }
   
   div.busy {
+    width: 365px;
     margin: 3px 3px 3px 3px;
     padding: 3px 3px 3px 3px;
     background-color: yellow;
     font-family: "Courier New";
+    display: inline;
+  }
+
+  div.scraperurl {
+    border-left: 1px solid #505050;
+    margin-left: 10px;
+    padding-left: 5px;
+    font-size: 100%;
+    display: inline;
   }
 
   </style>
@@ -185,6 +197,7 @@
             html += '<div class="notbusy">';
           }
           html += data['status'][i].scraperid + "</div>";
+          html += '<div class="scraperurl">' + data['status'][i]['status']['targeturl'] + '</div></br></br>';
         }
         $("#scraperstatus").html(html)
       });

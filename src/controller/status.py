@@ -4,6 +4,7 @@ import threading
 import uuid
 import time
 from time import strftime
+import sys
 
 class Status(threading.Thread):
 
@@ -61,6 +62,7 @@ class Status(threading.Thread):
 
     def stop(self):
         self.reqchan.stop_consuming()
+        sys.exit()
 
     def reqcallback(self,ch,method,properties,body):
         response = simplejson.loads(body)

@@ -18,7 +18,7 @@ class ScraperWrapper(threading.Thread):
         self.address = address
         self.exchange = exchange
 
-        self.interval = 2500
+        self.interval = 1
 
         self.scraper = Scraper(self.uid)
 
@@ -41,9 +41,13 @@ class ScraperWrapper(threading.Thread):
 
     def run(self):
         #print "Listening for messages on Message Bus ..."
-        threading.Timer(self.interval, self.broadcastavailable).start()
+        #threading.Timer(self.interval, self.broadcastavailable).start()
         self.broadcastavailable()
         self.reqchan.start_consuming()
+
+    def stop(self):
+        self.scraper.stop()
+        self.reqchan.stop_consuming()
 
     def broadcastavailable(self):
         if self.scraper.status['busy'] == True:
@@ -61,7 +65,11 @@ class ScraperWrapper(threading.Thread):
         }
         jbody = simplejson.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
-
+        if self.scraper.stopped():
+            raise Exception("Scraper Wrapper Exiting")
+        else:
+            threading.Timer(self.interval, self.broadcastavailable).start()
+        
     def broadcaststatus(self):
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
@@ -129,16 +137,19 @@ class ScraperWrapper(threading.Thread):
                 self.broadcastsimplestatus()
 
             elif response['command'] == 'shutdown':
+                print "ScraperWapper: shutdown seen."
                 if response['destinationid'] == self.uid:
-                    #print "Shutting Down."
+                    print "[{0}] Shutting Down Recieved".format(self.uid)
                     # stop consuming messages, so ScraperWrapper can exit
-                    self.reqchan.stop_consuming()
-                    print "Trying to kill scraper ..."
-                    self.scraper.stop()
+                    #self.reqchan.stop_consuming()
+                    #self.scraper.stop()
+                    self.stop()
+
             elif response['command'] == 'global_shutdown':
-                self.reqchan.stop_consuming()
-                print "Trying to kill scraper ..."
-                self.scraper.stop()
+                print "Global Shutdown Recieved"
+                #self.reqchan.stop_consuming()
+                #self.scraper.stop()
+                self.stop()
 
         #except:
         #    print "Message Error"

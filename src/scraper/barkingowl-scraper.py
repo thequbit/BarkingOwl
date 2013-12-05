@@ -4,8 +4,9 @@ def main():
     print "Starting BarkingOwl-Scraper."
 
     sw = ScraperWrapper()
-    sw.start()
-
-    #print "Exiting BarkingOwl-Scraper."
+    try:
+        sw.start()
+    except:
+        print "Exiting BarkingOwl-Scraper."
 
 main()

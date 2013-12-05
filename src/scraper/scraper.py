@@ -19,6 +19,8 @@ class Scraper(threading.Thread):
 
         self.uid = uid
 
+        self.interval = 1
+
         self.status['busy'] = False
         self.status['processed'] = []
         self.status['badlinks'] = []
@@ -35,21 +37,34 @@ class Scraper(threading.Thread):
         self.respchan = self.respcon.channel()
         self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
+        # start a timer to see if we should be exiting
+        threading.Timer(self.interval,self.checkshutdown).start()
+
     def seturldata(self,urldata):
         self.status['urldata'] = urldata
 
     def stop(self):
-        print "I've been told to stop ..."
         self._stop.set()
 
     def stopped(self):
         return self._stop.isSet()
 
+    def checkshutdown(self):
+        #
+        # See if we need to kill ourselves
+        #
+        if self.stopped():
+            print "[{0}] Exiting.".format(self.uid)
+            self.stop()
+            raise Exception("Scraper Exiting.")
+        else:
+            threading.Timer(self.interval, self.checkshutdown).start()
+
     def run(self):
         #print "Starting Scraper ..."
         self.broadcaststart()
         self.status['busy'] = True
-        
+       
         # reset globals
         self.status['processed'] = []
         self.status['badlinks'] = []
@@ -102,15 +117,6 @@ class Scraper(threading.Thread):
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def typelink(self,link,filesize=1024):
-        
-        #
-        # See if we need to kill ourselves
-        #
-        if self.stopped():
-            print "I'm trying to exit ..."
-            self.stop()
-            raise Exception("Scraper Exiting.")
-
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
         success = True
         filetype = ""

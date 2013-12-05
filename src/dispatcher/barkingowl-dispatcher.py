@@ -34,9 +34,30 @@ class Dispatcher():
 
     def start(self):
         self.urls = self.geturls()
+        self.broadcasturls()
         self.urlindex = len(self.urls)-1
         print "Listening for messages on Message Bus ..."
         self.reqchan.start_consuming()
+
+    def broadcasturls(self):
+        theurls = []
+        for url in self.urls:
+            urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype = url
+            creationdatetime = str(creationdatetime)
+            newurl = (urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype)
+            theurls.append(newurl)
+
+        packet = {
+            'urls': theurls,
+        }
+        payload = {
+            'command': 'dispatcher_urls',
+            'sourceid': self.uid,
+            'destinationid': 'broadcast',
+            'message': packet,
+        }
+        jbody = simplejson.dumps(payload)
+        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def sendurl(self,url,destinationid):
         urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype = url
@@ -68,6 +89,7 @@ class Dispatcher():
         if response['command'] == 'scraper_available':
             if self.urlindex < 0:
                 self.urls = self.geturls()
+                self.broadcasturls()
                 self.urlindex = len(self.urls)-1
             if self.urlindex >= 0:
                 self.sendurl(self.urls[self.urlindex],response['sourceid'])
@@ -75,6 +97,8 @@ class Dispatcher():
                 print "URL dispatched to '{0}'".format(response['sourceid'])
             else:
                 print "No URLs available for dispatch, ignoring request."
+        if response['command'] == 'global_shutdown':
+            raise Exception("Dispatcher Exiting.")
 
 def main():
     print "BarkingOwl Dispatcher Starting."

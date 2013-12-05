@@ -23,7 +23,7 @@ dispatcherlaunched = False
 
 @app.route('/addurl', methods=['GET'])
 def add():
-        print "Entering add()"
+        #print "Entering add()"
         success = True
         urlid = 0
     #try:
@@ -41,7 +41,7 @@ def add():
         )
     #except:
     #    success = False
-        print "Exiting add()"
+        #print "Exiting add()"
         ret = {}
         ret['success'] = success
         ret['urlid'] = urlid
@@ -49,7 +49,7 @@ def add():
 
 @app.route('/deleteurl', methods=['GET'])
 def delete():
-    print "Entering delete()"
+    #print "Entering delete()"
     success = True
     try:
         urlid = request.args['urlid']
@@ -57,14 +57,14 @@ def delete():
         urls.delete(urlid)
     except:
         success = False
-    print "Exiting delete()"
+    #print "Exiting delete()"
     ret = {}
     ret['success'] = success 
     return simplejson.dumps(ret)
 
 @app.route('/launchdispatcher')
 def launchdispatcher():
-    print "Entering launchdispatcher()"
+    #print "Entering launchdispatcher()"
     success = True
     try:
         if dispatcherlaunched == False:
@@ -74,7 +74,7 @@ def launchdispatcher():
             success = False
     except:
         success = False
-    print "Exiting launchdispatcher()"
+    #print "Exiting launchdispatcher()"
     ret = {}
     ret['success'] = success
     ret['launched'] = dispatcherlaunched
@@ -103,9 +103,29 @@ def systemshutdown():
     ret['success'] = success
     return simplejson.dumps(ret)
 
+@app.route('/scrapershutdown', methods=['GET'])
+def scrapershutdown():
+    print "scrapershutdown()"
+    success = True
+    scraperid = request.args['scraperid']
+    print "Shuting down: '{0}'".format(scraperid)
+    subprocess.Popen(['python','../tools/scrapershutdown.py',scraperid])
+    ret = {}
+    ret['success'] = success
+    return simplejson.dumps(ret)
+
+@app.route('/dispatcherurls', methods=['GET'])
+def dispatcherurls():
+    success = True
+    urls = status.geturls()
+    ret = {}
+    ret['success'] = success
+    ret['urls'] = urls
+    return simplejson.dumps(ret)
+
 @app.route('/scraperstatus')
 def status():
-    print "Entering status()"
+    #print "Entering status()"
     success = True
     json = []
     #try:
@@ -115,7 +135,7 @@ def status():
     #except:
     #    success = False
     #    status = []
-    print "Exiting status()"
+    #print "Exiting status()"
     ret = {}
     ret['success'] = success
     ret['status'] = stats

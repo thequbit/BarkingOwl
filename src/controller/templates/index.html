@@ -17,6 +17,12 @@
   div.top {
   }
 
+  div.title {
+    font-size: 250%;
+    /* padding: 15px 15px 15px 15px; */
+    margin-bottom: 10px;
+  }
+
   div.site {
     margin: auto;
     width: 1000px;
@@ -57,6 +63,11 @@
     font-family: monospace;
   }
 
+  div.dispatcherurls {
+    padding: 8px 8px 8px 8px;
+    border: 1px solid #D0D0D0;
+  }
+
   div.scraperstatus {
     padding: 8px 8px 8px 8px;
     /* width: 400px; */
@@ -90,6 +101,11 @@
     display: inline;
   }
 
+  div.scrapercontainer {
+    border-bottom: 1px solid #EEEEEE;
+    margin-bottom: 3px;
+  }
+
   </style>
 
 </head>
@@ -97,10 +113,8 @@
   
   <div class="top">
     <div class="site">
-      <div class="box">
-        <div class="boxtitle">Controller Website Log</div>
-        <div id="log"></div>
-        <button onclick="clearlog()">Clear Log</button>
+      <div class="title">
+        BarkingOwl Control Pannel
       </div>
       <div class="box">
         <div class="boxtitle">System Control</div>
@@ -111,24 +125,35 @@
       <div class="box">
         <div class="boxtitle">Add a URL</div>
         <div class="label">Target URL:</div>
-        <div class="input"><input type="text" id="targeturl" size="32"></div>
+        <div class="input"><input type="text" id="targeturl" size="64"></div>
+        <div class="label">Root URL:</div>
+        <div class="input"><input type="text" id="rooturl" size="64"></div>
         <div class="label">Max Link Level:</div>
-        <div class="input"><input type="text" id="maxlinklevel" size="32" value="1"></div>
+        <div class="input"><input type="text" id="maxlinklevel" size="2" value="1"></div>
         <button onclick="addurl()">Add URL</button>
         <div class="inline" id="addurlsuccess"></div>
       </div>
       <div class="box">
         <div class="boxtitle">Dispatcher Control/Status</div>
-        <div class="label"></div>
+        <div class="label">Launch Scraper:</div>
+        <button onclick="launchdispatcher()">Launch Dispatcher</button>
+        <div class="label">Current Dispatcher URLs:</div>
+        <div class="dispatcherurls" id="dispatcherurls">Launch Dispatcher to See URLs ...</div>
       </div>
       <div class="box">
         <div class="boxtitle">Scraper Control/Status</div>
+        <div class="label">Launch Scrapers:</div>
+        <div class="input inline"><input type="text" id="scrapercount" size="2" value="1"></div>
+        <div class="inline"><button onclick="launchscrapers()">Launch</button></div>
+        </br></br>
         <div class="label">Current Registered Scrapers:</div>
         <div class="scraperstatus" id="scraperstatus">Loading Scraper Status ...</div>
-        </br>
-        <div class="label">Launch Single Scraper:</div>
-        <button onclick="launchscraper(1)">Launch</button>
-        </div>
+      </div>
+      <div class="box">
+        <div class="boxtitle">Controller Website Log</div>
+        <div id="log"></div>
+        <!-- <button onclick="clearlog()">Clear Log</button> -->
+      </div>
     </div>
   </div>
   
@@ -156,24 +181,35 @@
       $("#log").html(html);
     }
  
-    function launchscraper(count)
+    function launchscrapers()
     {
-      var url = "launchscraper?count=1";
+      var count = $('#scrapercount').val();
+      var url = "launchscraper?count=" + count;
       $.getJSON(url, function( data ) {
         report("Scraper launch command sent.");
+      });
+    }
+
+    function launchdispatcher()
+    {
+      var url = "launchdispatcher";
+      $.getJSON(url, function( data ) {
+        report("Dispatcher launch command sent.");
       });
     }
 
     function addurl()
     {
       var targeturl = $("#targeturl").val();
+      var rooturl = $("#rooturl").val();
       var maxlinklevel = $("#maxlinklevel").val();
-      var url = "addurl?targeturl=" + targeturl + "&maxlinklevel=" + maxlinklevel;
+      var url = "addurl?targeturl=" + targeturl + "&rooturl=" + rooturl + "&maxlinklevel=" + maxlinklevel;
       $.getJSON(url, function(data) {
         if(data.success == true) {
           //$("#addurlsuccess").html('<b style="color: #00D000;">URL Added Successfully.</b>');
           report('URL Added Successfully: "' + targeturl + '"</b>');
           $("#targeturl").val("");
+          $("#rooturl").val("");
           $("#maxlinklevel").val("1");
         }
         else {
@@ -182,7 +218,13 @@
         }
       });
     }
-  
+ 
+    function update()
+    {
+        updatescraperstatus();
+        updateurls();
+    }
+ 
     function updatescraperstatus()
     {
       var url = "scraperstatus"
@@ -190,17 +232,49 @@
         var html = "<b>Scraper Count: " + data['status'].length + "</b></br>";
         for(var i = 0; i < data['status'].length; i++)
         {
-          if( data['status'][i]['status']['busy'] == true ) {
+          var busy = data['status'][i]['status']['busy'];
+          var targeturl = data['status'][i]['status']['targeturl'];
+          var scraperid = data['status'][i].scraperid;
+          
+          html += '<div class="scrapercontainer"><button style="margin-right: 10px;" onclick="shutdownscraper(\'' + scraperid + '\');">Shutdown </button>';
+
+          if( busy == true ) {
             html += '<div class="busy">';
           }
           else {
             html += '<div class="notbusy">';
           }
-          html += data['status'][i].scraperid + "</div>";
-          html += '<div class="scraperurl">' + data['status'][i]['status']['targeturl'] + '</div></br></br>';
+
+          html += scraperid + "</div>";
+          html += '<div class="scraperurl">' + targeturl + '</div></div>';
         }
         $("#scraperstatus").html(html)
       });
+    }
+
+    function updateurls()
+    {
+      var url = "dispatcherurls"
+       $.getJSON(url, function( data ) {
+         var html = "<b>URL Count: " + data['urls'].length + "</b>";
+         
+         for(var i = 0; i < data['urls'].length; i++)
+         {
+           var targeturl = data['urls'][i][1];
+           var mimetype = data['urls'][i][6];
+           html += '<div class="dispatcherurlcontainer">[ ' + mimetype + ' ] - <b>" ' + targeturl + '</b> "</div>';
+         }
+
+         $("#dispatcherurls").html(html);
+       });
+    }
+
+    function shutdownscraper(scraperid)
+    {
+      var url = "scrapershutdown?scraperid=" + scraperid;
+      $.getJSON(url, function( data ) {
+        report("Scraper shutdown command send to '" + scraperid + "'");
+      }); 
     }
 
     function shutdown()
@@ -215,7 +289,8 @@
     {
       report("Controller Page Loaded.");
 
-      setInterval(updatescraperstatus,1000);
+      setInterval(update,1000);
+      //update();
     }
 
   </script>

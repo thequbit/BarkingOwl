@@ -20,6 +20,7 @@ class Status(threading.Thread):
         self.uid = str(uuid.uuid4())
 
         self.status = {}
+        self.urls = []
 
         # how often we send a request for status
         self.interval = 1
@@ -64,6 +65,9 @@ class Status(threading.Thread):
         self.reqchan.stop_consuming()
         sys.exit()
 
+    def geturls(self):
+        return self.urls
+
     def getstatus(self):
         stats = []
         for key,value in self.status.iteritems():
@@ -74,7 +78,9 @@ class Status(threading.Thread):
         response = simplejson.loads(body)
         if response['command'] == 'scraper_status_simple':
             self.status[response['sourceid']] = response['message']
-        if response['command'] == 'scraper_shutdown':
-            self.status.pop(request['sourceid'],None)
+        if response['command'] == 'shutdown':
+            del self.status[response['destinationid']]
         if response['command'] == 'global_shutdown':
             self.status = {}
+        if response['command'] == 'dispatcher_urls':
+            self.urls = response['message']['urls']

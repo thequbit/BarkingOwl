@@ -100,10 +100,8 @@ class Dispatcher():
         if response['command'] == 'global_shutdown':
             raise Exception("Dispatcher Exiting.")
 
-def main():
+if __name__ == '__main__':
     print "BarkingOwl Dispatcher Starting."
     dispatcher = Dispatcher(address='localhost',exchange='barkingowl')
     dispatcher.start()
     print "BarkingOwl Dispatcher Exiting."
-
-main()    

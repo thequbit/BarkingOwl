@@ -43,8 +43,6 @@ class GlobalShutdown():
     def reqcallback(self,ch,method,properties,body):
         pass
 
-def main():
+if __name__ == '__main__':
     gs = GlobalShutdown()
     gs.shutdown()
-
-main()

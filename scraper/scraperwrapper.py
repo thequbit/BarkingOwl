@@ -21,6 +21,7 @@ class ScraperWrapper(threading.Thread):
         self.interval = 1
 
         self.scraper = Scraper(self.uid)
+        self.scraping = False
 
         #setup message bus
         self.respcon = pika.BlockingConnection(pika.ConnectionParameters(
@@ -118,15 +119,25 @@ class ScraperWrapper(threading.Thread):
     def reqcallback(self,ch,method,properties,body):
         #try:
             response = simplejson.loads(body)
-            if response['sourceid'] == self.uid:
-                return
+            #if response['sourceid'] == self.uid:
+            #    return
             #print "Processing Message:\n\t{0}".format(response['command'])
             if response['command'] == 'url_dispatch':
                 if response['destinationid'] == self.uid:
-                    #print "Launching Scraper on new URL."
+                    #print "URL Dispatch Command Seen."
                     #print response
-                    self.scraper.seturldata(response['message'])
-                    self.scraper.start()
+                    if self.scraping == False:
+                        #print "[Wrapper] Launching Scraper on URL: '{0}'".format(response['message']['targeturl'])
+                        self.scraper.seturldata(response['message'])
+                        if self.scraper.started == False:
+                            self.scraper.start()
+                        self.scraper.begin()
+                        self.scraping = True
+
+            elif response['command'] == 'scraper_finished':
+                #print "Seen Scraper Finished Command."
+                if response['sourceid'] == self.scraper.uid:
+                    self.scraping = False
 
             elif response['command'] == 'get_status':
                 #print "Responding to Status Request."
@@ -137,7 +148,7 @@ class ScraperWrapper(threading.Thread):
                 self.broadcastsimplestatus()
 
             elif response['command'] == 'shutdown':
-                print "ScraperWapper: shutdown seen."
+                #print "ScraperWapper: shutdown seen."
                 if response['destinationid'] == self.uid:
                     print "[{0}] Shutting Down Recieved".format(self.uid)
                     # stop consuming messages, so ScraperWrapper can exit

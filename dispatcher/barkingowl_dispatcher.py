@@ -2,8 +2,12 @@ import pika
 import simplejson
 import uuid
 from time import strftime
+import time
 
-from models import *
+import dateutil.parser
+import datetime
+
+#from models import *
 
 class Dispatcher():
 
@@ -13,6 +17,10 @@ class Dispatcher():
 
         self.address = address
         self.exchange = exchange
+
+        self.urls = []
+        self.scrapers = []
+        self.runs = []
 
         #setup message bus
         self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
@@ -27,15 +35,70 @@ class Dispatcher():
         self.respchan = self.respcon.channel()
         self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
-    def geturls(self):
+    def _geturls(self):
         urls = Urls()
         allurls = urls.getallurldata()
         return allurls
 
+    def seturls(self,urls):
+        """
+        seturls() expects an array of dictionaries that hold url data.  The format should
+        be the following:
+            url = {'targeturl': targeturl, # the root url to be scraped
+                   'title': title, # a title for the URL
+                   'description': descritpion, # a description of the url
+                   'maxlinklevel': maxlinklevel, # the max link level for the scraper to follow to
+                   'creationdatetime': creationdatetime, # ISO creation date and time
+                   'doctype': doctype, # the text for the magic lib to look for (ex. 'application/pdf')
+                   'frequency': frequency, # the frequency in minutes the URL should be scraped
+                  }
+        note: every time this function is called, the url list is reset, including the last
+        time any scraper ran agaist a url.
+        """
+
+        # setup urls for future data
+        for i in range(0,len(urls)):
+            urls[i]['startdatetime'] = ""
+            urls[i]['finishdatetime'] = ""
+            urls[i]['runs'] = []
+
+        self.urls = urls
+
+    def getnexturlindex(self):
+        urlindex = -1
+        for i in range(0,len(self.urls)):
+            now = datetime.datetime.strptime(strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S") # gross ...
+            # check to see if it ever ran
+            if self.urls[i]['startdatetime'] == "":
+                print "URL has not run yet: '{0}'".format(self.urls[i]['targeturl'])
+                urlindex = i
+                break
+            else:
+                startdatetime = datetime.datetime.strptime(self.urls[i]['startdatetime'],"%Y-%m-%d %H:%M:%S")
+                print "Start DateTime: {0}".format(startdatetime)
+                print "24 Hours: {0}".format(datetime.timedelta(hours=24))
+                print "Start DateTime + 24 Hours: {0}".format(startdatetime + datetime.timedelta(hours=24))
+                print "Now: {0}".format(now)
+                if urls[i]['finishdatetime'] == "":
+                    print "The URL has not finished yet, waiting ..."
+                    if now >= startdatetime + datetime.timedelta(hours=24):
+                        print "WARNING! The scraper has been out scraper for over 24 hours.  Returning URL to pool."
+                        # the scraper has been running for over a day, rerun it
+                        urlindex = i
+                        break
+                else:
+                    freq = self.urls[i]['frequency']
+                    finishdatetime = self.urls[i]['finishdatetime']
+                    if now >= finishdatetime + datetime.timedelta(minutes=int(freq)):
+                        # it's been over the frequcy, we need to run again
+                        urlindex = i
+                        break
+        return urlindex
+             
     def start(self):
-        self.urls = self.geturls()
-        self.broadcasturls()
-        self.urlindex = len(self.urls)-1
+        #self.urls = self._geturls()
+        #self.broadcasturls()
+        #self.urlindex = len(self.urls)-1
         print "Listening for messages on Message Bus ..."
         self.reqchan.start_consuming()
 
@@ -59,18 +122,25 @@ class Dispatcher():
         jbody = simplejson.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
-    def sendurl(self,url,destinationid):
-        urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype = url
+    def sendurl(self,urlindex,destinationid):
+        targeturl = self.urls[urlindex]['targeturl']
+        title = self.urls[urlindex]['title']
+        description = self.urls[urlindex]['description']
+        maxlinklevel = self.urls[urlindex]['maxlinklevel']
+        doctype = self.urls[urlindex]['doctype']
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
+        
         packet = {
-            'urlid': urlid,
+            #'urlid': urlid,
             'targeturl': targeturl,
             'maxlinklevel': maxlinklevel,
-            'creationdatetime': str(creationdatetime),
-            'doctypetitle': doctypetitle,
-            'docdescription': docdescription,
+            'title': title,
+            'description': description,
+            #'creationdatetime': str(creationdatetime),
+            #'doctypetitle': doctypetitle,
+            #'docdescription': docdescription,
             'doctype': doctype,
-            'disparchdatetime': str(isodatetime),
+            'dispatchdatetime': str(isodatetime),
         }
         #print "\n{0}\n".format(packet)
         payload = {
@@ -86,22 +156,68 @@ class Dispatcher():
     def reqcallback(self,ch,method,properties,body):
         response = simplejson.loads(body)
         #print "Processing Message:\n\t{0}".format(response)
+        if response['command'] == 'scraper_finished':
+            print "Seen Scraper Finished Command."
+            for i in range(0,len(self.urls)):
+                targeturl = response['message']['urldata']['targeturl']
+                sourceid = response['sourceid']
+                print "Comparing targeturl: {0} to {1}, sourceid: {2} to {3}".format(targeturl,self.urls[i]['targeturl'],sourceid,urls[i]['scraperid'])
+                now = datetime.datetime.strptime(strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S") # gross ...
+                if self.urls[i]['targeturl'] == targeturl and self.urls[i]['scraperid'] == sourceid:
+                    self.urls[i]['finishdatetime'] = now
+                    print "Scraper Announced URL Finish."
         if response['command'] == 'scraper_available':
-            if self.urlindex < 0:
-                self.urls = self.geturls()
-                self.broadcasturls()
-                self.urlindex = len(self.urls)-1
-            if self.urlindex >= 0:
-                self.sendurl(self.urls[self.urlindex],response['sourceid'])
-                self.urlindex -= 1
-                print "URL dispatched to '{0}'".format(response['sourceid'])
+            
+            #
+            # TODO: update this for new method of loading URLs
+            #
+
+            print "URL Request ..."
+
+            urlindex = self.getnexturlindex()
+
+            print "urlindex = {0}".format(urlindex)
+
+            if not urlindex == -1:
+                self.urls[urlindex]['startdatetime'] = str(strftime("%Y-%m-%d %H:%M:%S"))
+                self.urls[urlindex]['scraperid'] = response['sourceid']
+                self.urls[urlindex]['status'] = 'running'
+
+                print "URL request seen, sending next URL."
+
+                self.sendurl(urlindex,response['sourceid'])
             else:
-                print "No URLs available for dispatch, ignoring request."
+                print "URL request seen, no URLs to send."
+
+            #if self.urlindex < 0:
+            #    self.urls = self._geturls()
+            #    self.broadcasturls()
+            #    self.urlindex = len(self.urls)-1
+            #if self.urlindex >= 0:
+            #    self.sendurl(self.urls[self.urlindex],response['sourceid'])
+            #    self.urlindex -= 1
+            #    print "URL dispatched to '{0}'".format(response['sourceid'])
+            #else:
+            #    print "No URLs available for dispatch, ignoring request."
         if response['command'] == 'global_shutdown':
             raise Exception("Dispatcher Exiting.")
 
 if __name__ == '__main__':
     print "BarkingOwl Dispatcher Starting."
     dispatcher = Dispatcher(address='localhost',exchange='barkingowl')
+    
+    url = {'targeturl': "http://timduffy.me/",
+           'title': "TimDuffy.Me",
+           'description': "Tim Duffy's Personal Website",
+           'maxlinklevel': 3,
+           'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
+           'doctype': 'application/pdf',
+           'frequency': 2,
+          }
+    urls = []
+    urls.append(url)
+
+    dispatcher.seturls(urls)
+
     dispatcher.start()
     print "BarkingOwl Dispatcher Exiting."

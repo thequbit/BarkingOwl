@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from urlparse import urljoin
 import magic
 from time import strftime
+import sys
 
 class Scraper(threading.Thread):
 
@@ -16,6 +17,8 @@ class Scraper(threading.Thread):
 
         threading.Thread.__init__(self)
         self._stop = threading.Event()
+
+        self.started = False
 
         self.uid = uid
 
@@ -61,28 +64,60 @@ class Scraper(threading.Thread):
             threading.Timer(self.interval, self.checkshutdown).start()
 
     def run(self):
-        #print "Starting Scraper ..."
+        print "Starting Scraper ..."
+        self.started = True
+
+    def begin(self):
+        
         self.broadcaststart()
         self.status['busy'] = True
-       
+
         # reset globals
         self.status['processed'] = []
         self.status['badlinks'] = []
         self.status['linkcount'] = 0
         self.status['level'] = -1        
 
+        print "Starting Scraper on '{0}' ...".format(self.status['urldata']['targeturl'])
+
         links = []
         links.append((self.status['urldata']['targeturl'],'<root>'))
+        #print self.status
         try:
             self.followlinks(links=links,
                              level=0)
+            #print "Scraper Finished."
+            self.broadcastfinish()
         except:
-            print "Exiting Scraper."
+            print "Error: {0}".format(sys.exc_info()[0])
+            #print "Exiting Scraper."
+        
         self.status['busy'] = False
+        
         #
         # TODO: kill thread
         #
-        #print "Stopping Scraper."
+        print "Scraper is Stopped."
+        #self.stop()
+
+    def broadcastfinish(self):
+        #print "Scraper Finished."
+        isodatetime = strftime("%Y-%m-%d %H:%M:%S")
+        packet = {
+            'processed': self.status['processed'],
+            'badlinks': self.status['badlinks'],
+            'linkcount': self.status['linkcount'],
+            'urldata': self.status['urldata'],
+            'startdatetime': str(isodatetime)
+        }
+        payload = {
+            'command': 'scraper_finished',
+            'sourceid': self.uid,
+            'destinationid': 'broadcast',
+            'message': packet
+        }
+        jbody = simplejson.dumps(payload)
+        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def broadcaststart(self):
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
@@ -100,6 +135,7 @@ class Scraper(threading.Thread):
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def broadcastdoc(self,docurl,linktext):
+        #print "Doc Found: '{0}'".format(docurl)
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'docurl': docurl,
@@ -192,6 +228,7 @@ class Scraper(threading.Thread):
         else:
             level += 1
             #print "Working on {0} links ...".format(len(links))
+            #print links
             for _link in links:
                 link,linktext = _link
 
@@ -213,6 +250,8 @@ class Scraper(threading.Thread):
                 # get all of the links from the page
                 ignored = 0
                 success,allpagelinks = self.getpagelinks(self.status['urldata']['targeturl'],link)
+                #print "All Page Links for '{0}': {1}".format(link,allpagelinks)
+
                 #print "succes = {0}".format(success)
                 if success == False:
                     continue
@@ -239,6 +278,7 @@ class Scraper(threading.Thread):
                        success,linktype = self.typelink(thelink)
                        if success == True:
                            self.status['processed'][level-1].append(thelink)
+                           #print "Link: {0}, Type: {1}".format(thelink,linktype)
                            if linktype == self.status['urldata']['doctype']:
                                retlinks.append((thelink,linktext))
                                #broadcast the doc to the bus!

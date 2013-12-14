@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>BarkingOwl Controller</title>
+  
+  <style>
+ 
+  * {
+    font-size: 100%;
+    font-family: Arial;
+  }
+ 
+  div.inline {
+    display: inline;
+  }
+
+  div.top {
+  }
+
+  div.site {
+    margin: auto;
+    width: 1000px;
+    padding: 15px 15px 15px 15px;
+    border: 1px solid #A0A0A0;
+    background-color: #F4F4F4; 
+  }
+
+  div.input {
+    padding-left: 10px;
+    padding-bottom: 5px;
+  }
+
+  div.box {
+    border:1px solid #a1a1a1;
+    padding: 5px 5px 5px 5px;
+    /* width: 300px; */
+    background-color: #FFFFFF;
+    margin-bottom: 10px;
+  }
+  
+  div.boxtitle {
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-bottom: 2px;
+    margin-bottom: 5px;
+    color: #000000;
+    font-size: 150%;
+    border-bottom: 1px solid #D0D0D0;
+  }
+
+  div.label {
+    font-size: 80%;
+    font-weight: bold;
+  }
+
+  #log {
+    font-family: monospace;
+  }
+
+  div.scraperstatus {
+    padding: 8px 8px 8px 8px;
+    width: 400px;
+    border: 1px solid #D0D0D0;
+    /*display: inline;*/
+  }
+
+  div.notbusy {
+    background-color: lightgreen;
+  }
+  
+  div.busy {
+    background-color: yellow;
+  }
+
+  </style>
+
+</head>
+<body onload="init()">
+  
+  <div class="top">
+    <div class="site">
+      <div class="box">
+        <div class="boxtitle">Controller Website Log</div>
+        <div id="log"></div>
+        <button onclick="clearlog()">Clear Log</button>
+      </div>
+      <div class="box">
+        <div class="boxtitle">System Control</div>
+        <div class="label">System Shutdown</div>
+        <button onclick="shutdown()">Shutdown</button>
+        <div class="inline" id="shutdownstatus"></div>
+      </div>
+      <div class="box">
+        <div class="boxtitle">Add a URL</div>
+        <div class="label">Target URL:</div>
+        <div class="input"><input type="text" id="targeturl" size="32"></div>
+        <div class="label">Max Link Level:</div>
+        <div class="input"><input type="text" id="maxlinklevel" size="32" value="1"></div>
+        <button onclick="addurl()">Add URL</button>
+        <div class="inline" id="addurlsuccess"></div>
+      </div>
+      <div class="box">
+        <div class="boxtitle">Dispatcher Control/Status</div>
+        <div class="label"></div>
+      </div>
+      <div class="box">
+        <div class="boxtitle">Scraper Control/Status</div>
+        <div class="label">Current Registered Scrapers:</div>
+        <div class="scraperstatus" id="scraperstatus">Scraper Status</div>
+        </br>
+        <div class="label">Launch Single Scraper:</div>
+        <button onclick="launchscraper(1)">Launch</button>
+        </div>
+    </div>
+  </div>
+  
+  <script type="text/javascript" src="jquery-1.10.2.min.js"></script>
+  <script>
+
+    function currentdatetime()
+    {
+      var now = new Date();
+      var strDateTime = [[AddZero(now.getDate()), AddZero(now.getMonth() + 1), now.getFullYear()].join("/"), [AddZero(now.getHours()), AddZero(now.getMinutes()), AddZero(now.getSeconds())].join(":"), now.getHours() >= 12 ? "PM" : "AM"].join(" ");
+      return strDateTime;
+    }
+
+    //Pad given value to the left with "0"
+    function AddZero(num)
+    {
+      return (num >= 0 && num < 10) ? "0" + num : num + "";
+    }
+ 
+    function report(text)
+    {
+      var datetime = currentdatetime();
+      var html = $("#log").html();
+      html += "</br>[" + datetime + "] " + text;
+      $("#log").html(html);
+    }
+ 
+    function launchscraper(count)
+    {
+      var url = "launchscraper?count=1";
+      $.getJSON(url, function( data ) {
+        report("Scraper launch command sent.");
+      });
+    }
+
+    function addurl()
+    {
+      var targeturl = $("#targeturl").val();
+      var maxlinklevel = $("#maxlinklevel").val();
+      var url = "addurl?targeturl=" + targeturl + "&maxlinklevel=" + maxlinklevel;
+      $.getJSON(url, function(data) {
+        if(data.success == true) {
+          //$("#addurlsuccess").html('<b style="color: #00D000;">URL Added Successfully.</b>');
+          report('URL Added Successfully: "' + targeturl + '"</b>');
+          $("#targeturl").val("");
+          $("#maxlinklevel").val("1");
+        }
+        else {
+          report('<b style="color: #00D000;">ERROR!</b> URL Not Added Due to Error: "' + targeturl + '"');
+          //$("#addurlsuccess").html('<b style="color: #00D000;">Failed! URL Not Added Due to Error.</b>');
+        }
+      });
+    }
+  
+    function updatescraperstatus()
+    {
+      var url = "scraperstatus"
+      $.getJSON(url, function( data ) {
+        var html = "";
+        for(var i = 0; i < data['status'].length; i++)
+        {
+          //alert(data)
+          
+          if( data['status'][i]['status']['busy'] == true ) {
+            html += '<div class="busy">';
+          }
+          else {
+            html += '<div class="notbusy">';
+          }
+ 
+          html += data['status'][i].scraperid + "</div>";
+        }
+        $("#scraperstatus").html(html)
+      });
+    }
+
+    function shutdown()
+    {
+      var url = "systemshutdown";
+      $.getJSON(url, function( data ) {
+        report("System wide shutdown command sent.");
+      });
+    }
+
+    function init()
+    {
+      report("Controller Page Loaded.");
+
+      setInterval(updatescraperstatus,5000);
+    }
+
+  </script>
+  
+</body>
+</html>
+

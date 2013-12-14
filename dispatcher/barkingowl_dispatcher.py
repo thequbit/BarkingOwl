@@ -79,7 +79,7 @@ class Dispatcher():
                 print "24 Hours: {0}".format(datetime.timedelta(hours=24))
                 print "Start DateTime + 24 Hours: {0}".format(startdatetime + datetime.timedelta(hours=24))
                 print "Now: {0}".format(now)
-                if urls[i]['finishdatetime'] == "":
+                if self.urls[i]['finishdatetime'] == "":
                     print "The URL has not finished yet, waiting ..."
                     if now >= startdatetime + datetime.timedelta(hours=24):
                         print "WARNING! The scraper has been out scraper for over 24 hours.  Returning URL to pool."

@@ -1,12 +1,14 @@
 from scraperwrapper import ScraperWrapper
 
-def main():
+sw = ScraperWraper()
+
+def start():
+   sq.start()
+
+if __name__ == '__main__':
     print "Starting BarkingOwl-Scraper."
 
-    sw = ScraperWrapper()
     try:
-        sw.start()
+        start()
     except:
         print "Exiting BarkingOwl-Scraper."
-
-main()

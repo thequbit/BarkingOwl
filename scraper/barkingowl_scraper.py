@@ -1,6 +1,6 @@
 from scraperwrapper import ScraperWrapper
 
-sw = ScraperWraper()
+sw = ScraperWrapper()
 
 def start():
    sq.start()

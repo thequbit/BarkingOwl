@@ -2,8 +2,8 @@ from scraperwrapper import ScraperWrapper
 
 sw = ScraperWrapper()
 
-def start():
-   sq.start()
+def StartScraper():
+   sw.start()
 
 if __name__ == '__main__':
     print "Starting BarkingOwl-Scraper."

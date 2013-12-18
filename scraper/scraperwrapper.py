@@ -21,7 +21,7 @@ class ScraperWrapper(threading.Thread):
 
         self.interval = 1
 
-        self.scraper = Scraper(self.uid,DEBUG=DEBUG)
+        self.scraper = Scraper(self.uid,address=self.address,exchange=self.exchange,DEBUG=DEBUG)
         self.scraping = False
 
         #setup message bus

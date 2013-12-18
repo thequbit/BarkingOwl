@@ -13,7 +13,7 @@ class Scraper(threading.Thread):
 
     status = {}
 
-    def __init__(self,uid,address='localhost',exchange='barkingowl'):
+    def __init__(self,uid,address='localhost',exchange='barkingowl',DEBUG=False):
 
         threading.Thread.__init__(self)
         self._stop = threading.Event()
@@ -33,6 +33,7 @@ class Scraper(threading.Thread):
 
         self.address = address
         self.exchange = exchange
+        self.DEBUG = DEBUG
 
         # setup message broadcasting
         self.respcon = pika.BlockingConnection(pika.ConnectionParameters(
@@ -42,6 +43,9 @@ class Scraper(threading.Thread):
 
         # start a timer to see if we should be exiting
         threading.Timer(self.interval,self.checkshutdown).start()
+
+        if self.DEBUG:
+            print "Scraper INIT successful."
 
     def seturldata(self,urldata):
         self.status['urldata'] = urldata
@@ -64,11 +68,11 @@ class Scraper(threading.Thread):
             threading.Timer(self.interval, self.checkshutdown).start()
 
     def run(self):
-        print "Starting Scraper ..."
+        if self.DEBUG:
+            print "Starting Scraper ..."
         self.started = True
 
-    def begin(self):
-        
+    def begin(self): 
         self.broadcaststart()
         self.status['busy'] = True
 
@@ -78,7 +82,8 @@ class Scraper(threading.Thread):
         self.status['linkcount'] = 0
         self.status['level'] = -1        
 
-        print "Starting Scraper on '{0}' ...".format(self.status['urldata']['targeturl'])
+        if self.DEBUG:
+            print "Starting Scraper on '{0}' ...".format(self.status['urldata']['targeturl'])
 
         links = []
         links.append((self.status['urldata']['targeturl'],'<root>'))
@@ -135,7 +140,8 @@ class Scraper(threading.Thread):
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def broadcastdoc(self,docurl,linktext):
-        #print "Doc Found: '{0}'".format(docurl)
+        if self.DEBUG:
+            print "Doc Found: '{0}'".format(docurl)
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'docurl': docurl,
@@ -227,7 +233,8 @@ class Scraper(threading.Thread):
             pass
         else:
             level += 1
-            #print "Working on {0} links ...".format(len(links))
+            if self.DEBUG:
+                print "Working on {0} links ...".format(len(links))
             #print links
             for _link in links:
                 link,linktext = _link
@@ -250,6 +257,8 @@ class Scraper(threading.Thread):
                 # get all of the links from the page
                 ignored = 0
                 success,allpagelinks = self.getpagelinks(self.status['urldata']['targeturl'],link)
+                if self.DEBUG:
+                    print "Page '{0}' has {1} links on it.".format(link,len(allpagelinks))
                 #print "All Page Links for '{0}': {1}".format(link,allpagelinks)
 
                 #print "succes = {0}".format(success)

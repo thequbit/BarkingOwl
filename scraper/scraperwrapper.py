@@ -9,7 +9,7 @@ from scraper import Scraper
 
 class ScraperWrapper(threading.Thread):
 
-    def __init__(self,address='localhost',exchange='barkingowl'):
+    def __init__(self,address='localhost',exchange='barkingowl',DEBUG=False):
 
         threading.Thread.__init__(self)
 
@@ -17,10 +17,11 @@ class ScraperWrapper(threading.Thread):
 
         self.address = address
         self.exchange = exchange
+        self.DEBUG=DEBUG
 
         self.interval = 1
 
-        self.scraper = Scraper(self.uid)
+        self.scraper = Scraper(self.uid,DEBUG=DEBUG)
         self.scraping = False
 
         #setup message bus
@@ -36,7 +37,6 @@ class ScraperWrapper(threading.Thread):
         queue_name = result.method.queue
         self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
         self.reqchan.basic_consume(self.reqcallback,queue=queue_name,no_ack=True)
-
 
         print "Scraper Wrapper INIT complete."
 

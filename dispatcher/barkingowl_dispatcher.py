@@ -102,46 +102,55 @@ class Dispatcher():
         print "Listening for messages on Message Bus ..."
         self.reqchan.start_consuming()
 
-    def broadcasturls(self):
-        theurls = []
-        for url in self.urls:
-            urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype = url
-            creationdatetime = str(creationdatetime)
-            newurl = (urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype)
-            theurls.append(newurl)
+    #def clearurl(self,url):
+    #   urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype = url
+    #   creationdatetime = str(creationdatetime)
+    #   newurl = (urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype)
+    #   return newurl
 
-        packet = {
-            'urls': theurls,
-        }
-        payload = {
-            'command': 'dispatcher_urls',
-            'sourceid': self.uid,
-            'destinationid': 'broadcast',
-            'message': packet,
-        }
-        jbody = simplejson.dumps(payload)
-        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+    #def broadcasturls(self):
+    #    theurls = []
+    #    for url in self.urls:
+    #        urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype = url
+    #        creationdatetime = str(creationdatetime)
+    #        newurl = (urlid,targeturl,maxlinklevel,creationdatetime,doctypetitle,docdescription,doctype)
+    #        theurls.append(newurl)
+    #
+    #    packet = {
+    #        'urls': theurls,
+    #    }
+    #    payload = {
+    #        'command': 'dispatcher_urls',
+    #        'sourceid': self.uid,
+    #        'destinationid': 'broadcast',
+    #        'message': packet,
+    #    }
+    #    jbody = simplejson.dumps(payload)
+    #    self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def sendurl(self,urlindex,destinationid):
-        targeturl = self.urls[urlindex]['targeturl']
-        title = self.urls[urlindex]['title']
-        description = self.urls[urlindex]['description']
-        maxlinklevel = self.urls[urlindex]['maxlinklevel']
-        doctype = self.urls[urlindex]['doctype']
-        isodatetime = strftime("%Y-%m-%d %H:%M:%S")
+        #targeturl = self.urls[urlindex]['targeturl']
+        #title = self.urls[urlindex]['title']
+        #description = self.urls[urlindex]['description']
+        #maxlinklevel = self.urls[urlindex]['maxlinklevel']
+        #doctype = self.urls[urlindex]['doctype']
+        #isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         
-        packet = {
-            #'urlid': urlid,
-            'targeturl': targeturl,
-            'maxlinklevel': maxlinklevel,
-            'title': title,
-            'description': description,
-            #'creationdatetime': str(creationdatetime),
-            #'doctypetitle': doctypetitle,
-            #'docdescription': docdescription,
-            'doctype': doctype,
-            'dispatchdatetime': str(isodatetime),
-        }
+        #packet = {
+        #    #'urlid': urlid,
+        #    'targeturl': targeturl,
+        #    'maxlinklevel': maxlinklevel,
+        #    'title': title,
+        #    'description': description,
+        #    #'creationdatetime': str(creationdatetime),
+        #    #'doctypetitle': doctypetitle,
+        #    #'docdescription': docdescription,
+        #    'doctype': doctype,
+        #    'dispatchdatetime': str(isodatetime),
+        #}
+
+        packet = self.urls[urlindex]
+
         #print "\n{0}\n".format(packet)
         payload = {
             'command': 'url_dispatch',

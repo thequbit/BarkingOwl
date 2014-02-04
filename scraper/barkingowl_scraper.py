@@ -1,14 +1,16 @@
 from scraperwrapper import ScraperWrapper
 
-sw = ScraperWrapper()
+sw = None
 
-def StartScraper():
+def StartScraper(exchange="barkingowl"):
+   global sw
+   sw = ScraperWrapper(exchange="barkingowl",DEBUG=True)
    sw.start()
 
 if __name__ == '__main__':
-    print "Starting BarkingOwl-Scraper."
+    #print "Starting BarkingOwl-Scraper."
 
-    try:
-        start()
-    except:
-        print "Exiting BarkingOwl-Scraper."
+    #try:
+        StartScraper()
+    #except:
+    #    print "Exiting BarkingOwl-Scraper."

@@ -1,4 +1,4 @@
-import pika
+#import pika
 import simplejson
 import threading
 import urllib
@@ -36,16 +36,29 @@ class Scraper(threading.Thread):
         self.DEBUG = DEBUG
 
         # setup message broadcasting
-        self.respcon = pika.BlockingConnection(pika.ConnectionParameters(
-		                                           host=self.address))
-        self.respchan = self.respcon.channel()
-        self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
+        #self.respcon = pika.BlockingConnection(pika.ConnectionParameters(
+	#	                                           host=self.address))
+        #self.respchan = self.respcon.channel()
+        #self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
         # start a timer to see if we should be exiting
         threading.Timer(self.interval,self.checkshutdown).start()
 
         if self.DEBUG:
             print "Scraper INIT successful."
+
+        self.finishedCallback = None
+        self.startedCallBack = None
+        self.broadcastDocCallback = None
+
+    def setFinishedCallback(self,callback):
+        self.finishedCallback = callback
+
+    def setStartedCallback(self,callback):
+        self.startedCallback = callback
+
+    def setBroadcastDocCallback(self,callback):
+        self.broadcastDocCallback = callback
 
     def seturldata(self,urldata):
         self.status['urldata'] = urldata
@@ -121,8 +134,10 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        jbody = simplejson.dumps(payload)
-        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        #jbody = simplejson.dumps(payload)
+        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        if self.finishedCallback != None:
+            self.finishedCallback(payload)
 
     def broadcaststart(self):
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
@@ -136,8 +151,10 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        jbody = simplejson.dumps(payload)
-        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        #jbody = simplejson.dumps(payload)
+        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        if self.startedCallback != None:
+            self.startedCallback(payload)
 
     def broadcastdoc(self,docurl,linktext):
         if self.DEBUG:
@@ -155,8 +172,10 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        jbody = simplejson.dumps(payload)
-        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        #jbody = simplejson.dumps(payload)
+        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        if self.broadcastDocCallback != None:
+            self.broadcastDocCallback(payload)
 
     def typelink(self,link,filesize=1024):
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})

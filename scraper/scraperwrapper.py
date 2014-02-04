@@ -43,6 +43,13 @@ class ScraperWrapper(threading.Thread):
     def run(self):
         #print "Listening for messages on Message Bus ..."
         #threading.Timer(self.interval, self.broadcastavailable).start()
+
+        # setup call backs
+        self.scraper.setFinishedCallback(self.scraperFinishedCallback)
+        self.scraper.setStartedCallback(self.scraperStartedCallback)
+        self.scraper.setBroadcastDocCallback(self.scraperBroadcastDocCallback)
+
+        # broadcast availability
         self.broadcastavailable()
         self.reqchan.start_consuming()
 
@@ -114,6 +121,21 @@ class ScraperWrapper(threading.Thread):
         }
         jbody = simplejson.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+
+    def scraperFinishedCallback(self,payload):
+        jbody = simplejson.dumps(payload)
+        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        return
+
+    def scraperStartedCallback(self,payload):
+        jbody = simplejson.dumps(payload)
+        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        return
+
+    def scraperBroadcastDocCallback(self,payload):
+        jbody = simplejson.dumps(payload)
+        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        return
 
     # message handler
     def reqcallback(self,ch,method,properties,body):

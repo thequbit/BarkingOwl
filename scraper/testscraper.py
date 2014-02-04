@@ -90,6 +90,8 @@ def main():
     # get scraper status
     text_getstatus(scraper)
 
+    scraper.stop();
+
     print "Done."
 
 main()

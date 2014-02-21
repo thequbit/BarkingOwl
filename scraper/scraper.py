@@ -1,4 +1,3 @@
-#import pika
 import simplejson
 import threading
 import urllib
@@ -11,19 +10,16 @@ import sys
 
 class Scraper(threading.Thread):
 
-    status = {}
-
-    def __init__(self,uid,address='localhost',exchange='barkingowl',DEBUG=False):
+    def __init__(self,uid,DEBUG=False):
 
         threading.Thread.__init__(self)
+        
         self._stop = threading.Event()
-
         self.started = False
-
         self.uid = uid
-
         self.interval = 1
 
+        self.status = {}
         self.status['busy'] = False
         self.status['processed'] = []
         self.status['badlinks'] = []
@@ -31,25 +27,22 @@ class Scraper(threading.Thread):
         self.status['level'] = -1
         self.status['urldata'] = {}
 
-        self.address = address
-        self.exchange = exchange
         self.DEBUG = DEBUG
-
-        # setup message broadcasting
-        #self.respcon = pika.BlockingConnection(pika.ConnectionParameters(
-	#	                                           host=self.address))
-        #self.respchan = self.respcon.channel()
-        #self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
         # start a timer to see if we should be exiting
         threading.Timer(self.interval,self.checkshutdown).start()
 
-        if self.DEBUG:
-            print "Scraper INIT successful."
-
         self.finishedCallback = None
         self.startedCallBack = None
         self.broadcastDocCallback = None
+
+        if self.DEBUG:
+            print "Scraper INIT successful."
+
+    def setCallbacks(self,finishedCallback=None,startedCallback=None,broadcastDocCallback=None):
+         self.finishedCallback = finishedCallback
+         self.startedCallback = startedCallback
+         self.broadcastDocCallback = broadcastDocCallback 
 
     def setFinishedCallback(self,callback):
         self.finishedCallback = callback
@@ -71,12 +64,13 @@ class Scraper(threading.Thread):
 
     def checkshutdown(self):
         #
-        # See if we need to kill ourselves
+        # See if we need to stop ourselves
         #
         if self.stopped():
-            print "[{0}] Exiting.".format(self.uid)
+            if self.DEBUG:
+                print "[{0}] Exiting.".format(self.uid)
             self.stop()
-            raise Exception("Scraper Exiting.")
+            raise Exception("Scraper Stopped - Scraper Exiting.")
         else:
             threading.Timer(self.interval, self.checkshutdown).start()
 
@@ -100,26 +94,19 @@ class Scraper(threading.Thread):
 
         links = []
         links.append((self.status['urldata']['targeturl'],'<root>'))
-        #print self.status
         try:
+            # begin following links (note: blocking)
             self.followlinks(links=links,
                              level=0)
-            #print "Scraper Finished."
             self.broadcastfinish()
         except:
-            print "Error: {0}".format(sys.exc_info()[0])
-            #print "Exiting Scraper."
+            if self.DEBUG:
+                print "Error: {0}".format(sys.exc_info()[0])
+            raise Exception('Scraper Error - Scraper Exiting.')
         
         self.status['busy'] = False
         
-        #
-        # TODO: kill thread
-        #
-        print "Scraper is Stopped."
-        #self.stop()
-
     def broadcastfinish(self):
-        #print "Scraper Finished."
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'processed': self.status['processed'],
@@ -134,12 +121,12 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        #jbody = simplejson.dumps(payload)
-        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
         if self.finishedCallback != None:
             self.finishedCallback(payload)
 
     def broadcaststart(self):
+        if self.DEBUG:
+            print "Scraper Starting."
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'urldata': self.status['urldata'],
@@ -151,14 +138,12 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        #jbody = simplejson.dumps(payload)
-        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
         if self.startedCallback != None:
             self.startedCallback(payload)
 
     def broadcastdoc(self,docurl,linktext):
         if self.DEBUG:
-            print "Doc Found: '{0}'".format(docurl)
+            print "Doc Found: '{0}'.".format(docurl)
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'docurl': docurl,
@@ -172,8 +157,6 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        #jbody = simplejson.dumps(payload)
-        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
         if self.broadcastDocCallback != None:
             self.broadcastDocCallback(payload)
 
@@ -219,6 +202,7 @@ class Scraper(threading.Thread):
                 match = self.checkmatch(siteurl,rawhref)
                 abslink = urljoin(siteurl,rawhref)
                 links.append((match,abslink,linktext))
+                
                 # there are some websites that have absolute links that go above
                 # the root ... why this is I have no idea, but this is how i'm
                 # solving it
@@ -244,9 +228,8 @@ class Scraper(threading.Thread):
         self.status['linkcount'] += len(links)
         return success,links
 
-    def followlinks(self,links,level=0,debug=False):
+    def followlinks(self,links,level=0):
         retlinks = []
-        #_level = level
         if( level >= self.status['urldata']['maxlinklevel'] ):
             # made it to bottom link level, no need to continue
             pass
@@ -254,11 +237,8 @@ class Scraper(threading.Thread):
             level += 1
             if self.DEBUG:
                 print "Working on {0} links ...".format(len(links))
-            #print links
             for _link in links:
                 link,linktext = _link
-
-                #print "{0}".format(link)
 
                 # we need to keep track of what links we have visited at each 
                 # level.  Here we are adding to our array each time a new level 
@@ -278,9 +258,7 @@ class Scraper(threading.Thread):
                 success,allpagelinks = self.getpagelinks(self.status['urldata']['targeturl'],link)
                 if self.DEBUG:
                     print "Page '{0}' has {1} links on it.".format(link,len(allpagelinks))
-                #print "All Page Links for '{0}': {1}".format(link,allpagelinks)
 
-                #print "succes = {0}".format(success)
                 if success == False:
                     continue
 
@@ -296,7 +274,8 @@ class Scraper(threading.Thread):
                     if( match == True ):
                         pagelinks.append((link,linktext))
 
-                #print "Number of Page Links: {0}".format(len(pagelinks))
+                if self.DEBUG:
+                    print "Number of Page Links: {0}.".format(len(pagelinks))
 
                 # Some of the links that were returned from this page might be pdfs,
                 # if they are, add them to the list of pdfs to be returned 'retlinks'
@@ -306,27 +285,16 @@ class Scraper(threading.Thread):
                        success,linktype = self.typelink(thelink)
                        if success == True:
                            self.status['processed'][level-1].append(thelink)
-                           #print "Link: {0}, Type: {1}".format(thelink,linktype)
                            if linktype == self.status['urldata']['doctype']:
                                retlinks.append((thelink,linktext))
+                               
                                #broadcast the doc to the bus!
                                self.broadcastdoc(thelink,linktext)
                        else:
                            ignored += 1
-                       #print "{0} : {1} : {2}".format(success,linktype,thelink)
-                       #print retlinks
-
-                #print "Starting to follow links to next level ..."
 
                 # Follow all of the link within the 'thelink' array
-                gotlinks = self.followlinks(#orgid=orgid,
-                                           #urlid=urlid,
-                                           #maxlevel=maxlevel,
-                                           #siteurl=siteurl,
-                                           links=pagelinks,
-                                           level=level,
-                                           #filesize=filesize,
-                                          )
+                gotlinks = self.followlinks(links=pagelinks,level=level)
 
                 # go through all of the returned links and see if any of them are docs
                 for _gotlink in gotlinks:
@@ -337,14 +305,16 @@ class Scraper(threading.Thread):
                            self.status['processed'][level-1].append(gotlink)
                            if linktype == self.status['urldata']['doctype']:
                                retlinks.append((gotlink,linktext))
+                               
                                #broadcast the doc to the bus!
                                self.broadcastdoc(gotlink,linktext)
                        else:
                            ignored += 1
             level -= 1
+
         for l in links:
             if not l in self.status['processed']:
                 self.status['processed'].append(l)
-        return retlinks
 
+        return retlinks
 

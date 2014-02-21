@@ -10,18 +10,16 @@ from scraper import Scraper
 class ScraperWrapper(threading.Thread):
 
     def __init__(self,address='localhost',exchange='barkingowl',DEBUG=False):
-
         threading.Thread.__init__(self)
 
         self.uid = str(uuid.uuid4())
-
         self.address = address
         self.exchange = exchange
         self.DEBUG=DEBUG
-
         self.interval = 1
 
-        self.scraper = Scraper(self.uid,address=self.address,exchange=self.exchange,DEBUG=DEBUG)
+        # create scraper instance
+        self.scraper = Scraper(uid=self.uid,DEBUG=DEBUG)
         self.scraping = False
 
         #setup message bus
@@ -38,12 +36,10 @@ class ScraperWrapper(threading.Thread):
         self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
         self.reqchan.basic_consume(self.reqcallback,queue=queue_name,no_ack=True)
 
-        print "Scraper Wrapper INIT complete."
+        if self.DEBUG:
+            print "Scraper Wrapper INIT complete."
 
     def run(self):
-        #print "Listening for messages on Message Bus ..."
-        #threading.Timer(self.interval, self.broadcastavailable).start()
-
         # setup call backs
         self.scraper.setFinishedCallback(self.scraperFinishedCallback)
         self.scraper.setStartedCallback(self.scraperStartedCallback)
@@ -59,6 +55,7 @@ class ScraperWrapper(threading.Thread):
 
     def broadcastavailable(self):
         if self.scraper.status['busy'] == True:
+            # we are currently scraping, so we are not available - don't broadcast
             return
 
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
@@ -73,6 +70,10 @@ class ScraperWrapper(threading.Thread):
         }
         jbody = simplejson.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+
+        #
+        # TODO: move this over to it's own timer, no need to do it here.
+        #
         if self.scraper.stopped():
             raise Exception("Scraper Wrapper Exiting")
         else:
@@ -92,7 +93,7 @@ class ScraperWrapper(threading.Thread):
             'message': packet
         }
         jbody = simplejson.dumps(payload)
-        time.sleep(.5)
+        #time.sleep(.5)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def broadcastsimplestatus(self):
@@ -104,8 +105,6 @@ class ScraperWrapper(threading.Thread):
             targeturl = self.scraper.status['urldata']['targeturl']
 
         packet = {
-            #'status': self.scraper.status,
-            #'urldata': self.status['urldata'],
             'busy': self.scraper.status['busy'],
             'linkcount': self.scraper.status['linkcount'],
             'processedlinkcount': len(self.scraper.status['processed']),
@@ -139,11 +138,10 @@ class ScraperWrapper(threading.Thread):
 
     # message handler
     def reqcallback(self,ch,method,properties,body):
-        #try:
+        try:
             response = simplejson.loads(body)
-            #if response['sourceid'] == self.uid:
-            #    return
-            #print "Processing Message:\n\t{0}".format(response['command'])
+            if self.DEBUG:
+                print "Processing Message:\n\t{0}".format(response['command'])
             if response['command'] == 'url_dispatch':
                 if response['destinationid'] == self.uid:
                     #print "URL Dispatch Command Seen."
@@ -157,33 +155,25 @@ class ScraperWrapper(threading.Thread):
                         self.scraping = True
 
             elif response['command'] == 'scraper_finished':
-                #print "Seen Scraper Finished Command."
                 if response['sourceid'] == self.scraper.uid:
                     self.scraping = False
 
             elif response['command'] == 'get_status':
-                #print "Responding to Status Request."
                 self.broadcaststatus()
 
             elif response['command'] == 'get_status_simple':
-                #print "Responding to Simple Status Request."
                 self.broadcastsimplestatus()
 
             elif response['command'] == 'shutdown':
-                #print "ScraperWapper: shutdown seen."
                 if response['destinationid'] == self.uid:
                     print "[{0}] Shutting Down Recieved".format(self.uid)
-                    # stop consuming messages, so ScraperWrapper can exit
-                    #self.reqchan.stop_consuming()
-                    #self.scraper.stop()
                     self.stop()
 
             elif response['command'] == 'global_shutdown':
                 print "Global Shutdown Recieved"
-                #self.reqchan.stop_consuming()
-                #self.scraper.stop()
                 self.stop()
 
-        #except:
-        #    print "Message Error"
+        except:
+            if self.DEBUG:
+                print "Message Error"
 

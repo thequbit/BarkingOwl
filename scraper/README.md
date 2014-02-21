@@ -89,8 +89,16 @@ The simplest way to use the scraper is using the following:
         # start the scraper thread
         self.scraper.start()
     
-    # begin scraping!
-    self.scraper.begin()
+        # begin scraping!
+        try:
+            scraper.begin()
+            scraper.stop()
+        except:
+            # an exception will be thrown when the scraper is exited.
+            pass
+            
+        print "all done."
+        
     
 This code will call the broadcastDocCallback function everytime a document is found on the website by the scraper.
 

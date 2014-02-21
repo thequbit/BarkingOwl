@@ -92,7 +92,6 @@ The simplest way to use the scraper is using the following:
         # begin scraping!
         try:
             scraper.begin()
-            scraper.stop()
         except:
             # an exception will be thrown when the scraper is exited.
             pass

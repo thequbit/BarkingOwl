@@ -32,7 +32,7 @@ class GlobalShutdown():
             'availabledatetime': str(isodatetime)
         }
         payload = {
-            'command': 'get_status_simple',
+            'command': 'global_shutdown',
             'sourceid': self.uid,
             'destinationid': 'broadcast',
             'message': packet
@@ -42,9 +42,3 @@ class GlobalShutdown():
 
     def reqcallback(self,ch,method,properties,body):
         pass
-
-def main():
-    gs = GlobalShutdown()
-    gs.shutdown()
-
-main()

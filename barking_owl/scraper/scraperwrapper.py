@@ -7,7 +7,7 @@ import threading
 
 from scraper import Scraper
 
-class ScraperWraper(threading.Thread):
+class ScraperWrapper(threading.Thread):
 
     def __init__(self,address='localhost',exchange='barkingowl',DEBUG=False):
         threading.Thread.__init__(self)

@@ -1,1 +1,2 @@
-# allows for lib import
+from .scraper import Scraper
+from .dispatcher import Dispatcher

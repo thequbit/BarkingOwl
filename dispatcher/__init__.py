@@ -1,1 +1,1 @@
-# allows for lib imports
+from .barkingowl_dispatcher import Dispatcher

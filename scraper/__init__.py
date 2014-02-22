@@ -1,1 +1,1 @@
-# allows for lib import
+from .scraper import Scraper

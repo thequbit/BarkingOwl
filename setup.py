@@ -10,11 +10,11 @@ find specific document types such as PDFs.
 
 setup(
     name="BarkingOwl",
-    version="0.0.1",
+    version="0.0.2",
     license="GPL2",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",
-    packages=["barking_owl"],
+    packages=["barking_owl", "barking_owl.scraper", "barking_owl.dispatcher"],
     zip_safe=False,
     description='Scalable web crawler.',
     long_description=long_description,

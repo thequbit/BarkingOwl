@@ -170,7 +170,7 @@ class Dispatcher():
             for i in range(0,len(self.urls)):
                 targeturl = response['message']['urldata']['targeturl']
                 sourceid = response['sourceid']
-                print "Comparing targeturl: {0} to {1}, sourceid: {2} to {3}".format(targeturl,self.urls[i]['targeturl'],sourceid,self.urls[i]['scraperid'])
+                print "Comparing targeturl: {0} to {1}, sourceid: {2} to {3}".format(targeturl,self.urls[i]['targeturl'],sourceid,self.urls[i]['sourceid'])
                 now = datetime.datetime.strptime(strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S") # gross ...
                 if self.urls[i]['targeturl'] == targeturl and self.urls[i]['scraperid'] == sourceid:
                     self.urls[i]['finishdatetime'] = now

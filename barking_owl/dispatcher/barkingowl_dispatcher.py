@@ -212,21 +212,38 @@ class Dispatcher():
             raise Exception("Dispatcher Exiting.")
 
 if __name__ == '__main__':
+
     print "BarkingOwl Dispatcher Starting."
+
     dispatcher = Dispatcher(address='localhost',exchange='barkingowl')
     
-    url = {'targeturl': "http://timduffy.me/",
-           'title': "TimDuffy.Me",
-           'description': "Tim Duffy's Personal Website",
-           'maxlinklevel': 3,
-           'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
-           'doctype': 'application/pdf',
-           'frequency': 2,
-          }
+    #url = {'targeturl': "http://timduffy.me/",
+    #       'title': "TimDuffy.Me",
+    #       'description': "Tim Duffy's Personal Website",
+    #       'maxlinklevel': 3,
+    #       'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
+    #       'doctype': 'application/pdf',
+    #       'frequency': 2,
+    #      }
+    
+    url = {
+        'targeturl': "http://www.cityofrochester.gov/",
+        'title': "City of Rochester",
+        'description': "City of Rochester, NY Website",
+        'maxlinklevel': 3,
+        'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
+        'doctype': 'application/pdf',
+        'frequency': 1,
+    }
+
     urls = []
     urls.append(url)
 
     dispatcher.seturls(urls)
 
-    dispatcher.start()
+    try:
+        dispatcher.start()
+    except:
+        pass
+
     print "BarkingOwl Dispatcher Exiting."

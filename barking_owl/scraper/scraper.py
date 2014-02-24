@@ -79,6 +79,20 @@ class Scraper(threading.Thread):
             print "Starting Scraper ..."
         self.started = True
 
+    def reset(self):
+
+        # reset globals
+        self.status['processed'] = []
+        self.status['badlinks'] = []
+        self.status['linkcount'] = 0
+        self.status['level'] = -1
+        self.status['bandwidth'] = 0
+        self.status['busy'] = False
+        self.status['urldata'] = {}
+
+        if self.DEBUG:
+            print "Scraper data reset successfully."
+
     def begin(self): 
         self.broadcaststart()
         self.status['busy'] = True
@@ -87,7 +101,8 @@ class Scraper(threading.Thread):
         self.status['processed'] = []
         self.status['badlinks'] = []
         self.status['linkcount'] = 0
-        self.status['level'] = -1        
+        self.status['level'] = -1
+        self.status['bandwidth'] = 0
 
         if self.DEBUG:
             print "Starting Scraper on '{0}' ...".format(self.status['urldata']['targeturl'])
@@ -113,6 +128,7 @@ class Scraper(threading.Thread):
             'badlinks': self.status['badlinks'],
             'linkcount': self.status['linkcount'],
             'urldata': self.status['urldata'],
+            'bandwidth': self.status['bandwidth'],
             'startdatetime': str(isodatetime)
         }
         payload = {
@@ -161,11 +177,20 @@ class Scraper(threading.Thread):
             self.broadcastDocCallback(payload)
 
     def typelink(self,link,filesize=1024):
+        
+        if self.stopped():
+            if self.DEBUG:
+                print 'typelink() saw the stopped flag - exiting scraper.'
+            self.reset()
+            raise Exception('Scraper thread stopped.')
+
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
         success = True
         filetype = ""
         try:
             payload = urllib2.urlopen(req,timeout=5).read(filesize)
+            # record bandwidth used
+            self.status['bandwidth'] += filesize
             filetype = magic.from_buffer(payload,mime=True)
         except Exception, e:
             success = False;
@@ -191,6 +216,8 @@ class Scraper(threading.Thread):
             return False,links
         try:
             html = urllib2.urlopen(url)
+            # record bandwidth used
+            self.status['bandwidth'] += len(html)
             soup = BeautifulSoup(html)
             atags = soup.find_all('a', href=True)
             for tag in atags:

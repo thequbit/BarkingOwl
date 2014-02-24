@@ -13,13 +13,13 @@ class GlobalShutdown():
         self.uid = str(uuid.uuid4())
 
         #setup message bus
-        self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
-        self.reqchan = self.reqcon.channel()
-        self.reqchan.exchange_declare(exchange=exchange,type='fanout')
-        result = self.reqchan.queue_declare(exclusive=True)
-        queue_name = result.method.queue
-        self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
-        self.reqchan.basic_consume(self.reqcallback,queue=queue_name,no_ack=True)
+        #self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
+        #self.reqchan = self.reqcon.channel()
+        #self.reqchan.exchange_declare(exchange=exchange,type='fanout')
+        #result = self.reqchan.queue_declare(exclusive=True)
+        #queue_name = result.method.queue
+        #self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
+        #self.reqchan.basic_consume(self.reqcallback,queue=queue_name,no_ack=True)
 
         self.respcon = pika.BlockingConnection(pika.ConnectionParameters(
                                                            host=self.address))
@@ -42,3 +42,13 @@ class GlobalShutdown():
 
     def reqcallback(self,ch,method,properties,body):
         pass
+
+if __name__ == '__main__':
+
+    print 'Sending Global Shutdown Broadcast ...'
+
+    globalshutdown = GlobalShutdown(address='localhost',exchange='barkingowl')
+
+    globalshutdown.shutdown()
+
+    print 'Exiting.'

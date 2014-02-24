@@ -53,6 +53,9 @@ class ScraperWrapper(threading.Thread):
         self.scraper.stop()
         self.reqchan.stop_consuming()
 
+    def resetscraper(self):
+        self.scraper.reset()
+
     def broadcastavailable(self):
         if self.scraper.status['busy'] == True:
             # we are currently scraping, so we are not available - don't broadcast
@@ -138,10 +141,11 @@ class ScraperWrapper(threading.Thread):
 
     # message handler
     def reqcallback(self,ch,method,properties,body):
-        try:
+        #try:
+        if True:
             response = simplejson.loads(body)
             if self.DEBUG:
-                print "Processing Message:\n\t{0}".format(response['command'])
+                print "Processing Message:\n\t{0}".format(response)
             if response['command'] == 'url_dispatch':
                 if response['destinationid'] == self.uid:
                     #print "URL Dispatch Command Seen."
@@ -164,6 +168,9 @@ class ScraperWrapper(threading.Thread):
             elif response['command'] == 'get_status_simple':
                 self.broadcastsimplestatus()
 
+            elif response['command'] == 'reset_scraper':
+                self.resetscraper()
+
             elif response['command'] == 'shutdown':
                 if response['destinationid'] == self.uid:
                     print "[{0}] Shutting Down Recieved".format(self.uid)
@@ -173,7 +180,17 @@ class ScraperWrapper(threading.Thread):
                 print "Global Shutdown Recieved"
                 self.stop()
 
-        except:
-            if self.DEBUG:
-                print "Message Error"
+        #except:
+        #    if self.DEBUG:
+        #        print "Message Error"
 
+if __name__ == '__main__':
+
+    print 'Launching BarkingOwl scraper ...'
+
+    scraperwrapper = ScraperWrapper(address='localhost',exchange='barkingowl', DEBUG=True)
+
+    try:
+        scraperwrapper.start()
+    except:
+        print 'exiting.'

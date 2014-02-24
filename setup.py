@@ -10,8 +10,8 @@ find specific document types such as PDFs.
 
 setup(
     name="BarkingOwl",
-    version="0.0.5",
-    license="GPL2",
+    version="0.0.6",
+    license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",
     packages=["barking_owl", "barking_owl.scraper", "barking_owl.dispatcher"],
@@ -35,7 +35,7 @@ setup(
       'Development Status :: 3 - Alpha',
       'Environment :: Console',
       'Intended Audience :: Developers',
-      'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
+      'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
       'Operating System :: POSIX',
     ],
 )

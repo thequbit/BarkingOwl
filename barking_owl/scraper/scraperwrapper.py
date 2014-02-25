@@ -1,5 +1,5 @@
 import pika
-import simplejson
+import json
 import uuid
 from time import strftime
 import time
@@ -71,7 +71,7 @@ class ScraperWrapper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        jbody = simplejson.dumps(payload)
+        jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
         #
@@ -95,7 +95,7 @@ class ScraperWrapper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        jbody = simplejson.dumps(payload)
+        jbody = json.dumps(payload)
         #time.sleep(.5)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
@@ -121,21 +121,21 @@ class ScraperWrapper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
-        jbody = simplejson.dumps(payload)
+        jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def scraperFinishedCallback(self,payload):
-        jbody = simplejson.dumps(payload)
+        jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
         return
 
     def scraperStartedCallback(self,payload):
-        jbody = simplejson.dumps(payload)
+        jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
         return
 
     def scraperBroadcastDocCallback(self,payload):
-        jbody = simplejson.dumps(payload)
+        jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
         return
 
@@ -143,9 +143,9 @@ class ScraperWrapper(threading.Thread):
     def reqcallback(self,ch,method,properties,body):
         #try:
         if True:
-            response = simplejson.loads(body)
+            response = json.loads(body)
             if self.DEBUG:
-                print "Processing Message:\n\t{0}".format(response)
+                print "Processing Message:\n\t{0}".format(response['command'])
             if response['command'] == 'url_dispatch':
                 if response['destinationid'] == self.uid:
                     #print "URL Dispatch Command Seen."

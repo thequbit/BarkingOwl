@@ -1,4 +1,3 @@
-import simplejson
 import threading
 import urllib
 import urllib2
@@ -187,13 +186,14 @@ class Scraper(threading.Thread):
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
         success = True
         filetype = ""
-        try:
+        #try:
+        if True:
             payload = urllib2.urlopen(req,timeout=5).read(filesize)
             # record bandwidth used
             self.status['bandwidth'] += filesize
             filetype = magic.from_buffer(payload,mime=True)
-        except Exception, e:
-            success = False;
+        #except Exception, e:
+        #    success = False;
         return success,filetype
 
     def checkmatch(self,siteurl,link):
@@ -217,7 +217,7 @@ class Scraper(threading.Thread):
         try:
             html = urllib2.urlopen(url)
             # record bandwidth used
-            self.status['bandwidth'] += len(html)
+            self.status['bandwidth'] += len(str(html))
             soup = BeautifulSoup(html)
             atags = soup.find_all('a', href=True)
             for tag in atags:
@@ -252,6 +252,8 @@ class Scraper(threading.Thread):
         except Exception, e:
             links = []
             sucess = False
+            if self.DEBUG:
+                print "An error occurred in getpagelinks(): {0}".format(str(e))
         self.status['linkcount'] += len(links)
         return success,links
 
@@ -264,8 +266,12 @@ class Scraper(threading.Thread):
             level += 1
             if self.DEBUG:
                 print "Working on {0} links ...".format(len(links))
+                print "Links: {0}".format(links)
             for _link in links:
                 link,linktext = _link
+
+                if self.DEBUG:
+                    print "Working on '{0}'".format(link)
 
                 # we need to keep track of what links we have visited at each 
                 # level.  Here we are adding to our array each time a new level 

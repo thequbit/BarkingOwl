@@ -1,5 +1,5 @@
 import pika
-import simplejson
+import json
 import uuid
 from time import strftime
 import time
@@ -11,12 +11,13 @@ import datetime
 
 class Dispatcher():
 
-    def __init__(self,address='localhost',exchange='barkingowl'):
+    def __init__(self,address='localhost',exchange='barkingowl', DEBUG=False):
         # create our uuid
         self.uid = str(uuid.uuid4())
 
         self.address = address
         self.exchange = exchange
+        self.DEBUG = DEBUG
 
         self.urls = []
         self.scrapers = []
@@ -70,19 +71,23 @@ class Dispatcher():
             now = datetime.datetime.strptime(strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S") # gross ...
             # check to see if it ever ran
             if self.urls[i]['startdatetime'] == "":
-                print "URL has not run yet: '{0}'".format(self.urls[i]['targeturl'])
+                if self.DEBUG:
+                    print "URL has not run yet: '{0}'".format(self.urls[i]['targeturl'])
                 urlindex = i
                 break
             else:
                 startdatetime = datetime.datetime.strptime(self.urls[i]['startdatetime'],"%Y-%m-%d %H:%M:%S")
-                print "Start DateTime: {0}".format(startdatetime)
-                print "24 Hours: {0}".format(datetime.timedelta(hours=24))
-                print "Start DateTime + 24 Hours: {0}".format(startdatetime + datetime.timedelta(hours=24))
-                print "Now: {0}".format(now)
+                if self.DEBUG:
+                    print "Start DateTime: {0}".format(startdatetime)
+                    print "24 Hours: {0}".format(datetime.timedelta(hours=24))
+                    print "Start DateTime + 24 Hours: {0}".format(startdatetime + datetime.timedelta(hours=24))
+                    print "Now: {0}".format(now)
                 if self.urls[i]['finishdatetime'] == "":
-                    print "The URL has not finished yet, waiting ..."
+                    if self.DEBUG:
+                        print "The URL has not finished yet, waiting ..."
                     if now >= startdatetime + datetime.timedelta(hours=24):
-                        print "WARNING! The scraper has been out scraper for over 24 hours.  Returning URL to pool."
+                        if self.DEBUG:
+                            print "WARNING! The scraper has been out scraper for over 24 hours.  Returning URL to pool."
                         # the scraper has been running for over a day, rerun it
                         urlindex = i
                         break
@@ -99,7 +104,8 @@ class Dispatcher():
         #self.urls = self._geturls()
         #self.broadcasturls()
         #self.urlindex = len(self.urls)-1
-        print "Listening for messages on Message Bus ..."
+        if self.DEBUG:
+            print "Listening for messages on Message Bus ..."
         self.reqchan.start_consuming()
 
     #def clearurl(self,url):
@@ -158,45 +164,54 @@ class Dispatcher():
             'destinationid': destinationid,
             'message': packet
         }
-        jbody = simplejson.dumps(payload)
+        jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     # message handler
     def reqcallback(self,ch,method,properties,body):
-        response = simplejson.loads(body)
+        response = json.loads(body)
         #print "Processing Message:\n\t{0}".format(response)
         if response['command'] == 'scraper_finished':
-            print "Seen Scraper Finished Command."
+            if self.DEBUG:
+                print "Seen Scraper Finished Command."
             for i in range(0,len(self.urls)):
                 targeturl = response['message']['urldata']['targeturl']
                 sourceid = response['sourceid']
-                print "Comparing targeturl: {0} to {1}, sourceid: {2} to {3}".format(targeturl,self.urls[i]['targeturl'],sourceid,self.urls[i]['sourceid'])
+                if self.DEBUG:
+                    print urls[i]
+                    print "Comparing targeturl: {0} to {1}, sourceid: {2} to {3}".format(targeturl,
+                                                                                         self.urls[i]['targeturl'],
+                                                                                         sourceid,
+                                                                                         self.urls[i]['scraperid']
+                    )
                 now = datetime.datetime.strptime(strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S") # gross ...
                 if self.urls[i]['targeturl'] == targeturl and self.urls[i]['scraperid'] == sourceid:
                     self.urls[i]['finishdatetime'] = now
-                    print "Scraper Announced URL Finish."
+                    if self.DEBUG:
+                        print "Scraper Announced URL Finish."
         if response['command'] == 'scraper_available':
             
             #
             # TODO: update this for new method of loading URLs
             #
 
-            print "URL Request ..."
+            if self.DEBUG:
+                print "Processing URL Request ..."
 
             urlindex = self.getnexturlindex()
-
-            print "urlindex = {0}".format(urlindex)
 
             if not urlindex == -1:
                 self.urls[urlindex]['startdatetime'] = str(strftime("%Y-%m-%d %H:%M:%S"))
                 self.urls[urlindex]['scraperid'] = response['sourceid']
                 self.urls[urlindex]['status'] = 'running'
 
-                print "URL request seen, sending next URL."
+                if self.DEBUG:
+                    print "URL request seen, sending next URL."
 
                 self.sendurl(urlindex,response['sourceid'])
             else:
-                print "URL request seen, no URLs to send."
+                if self.DEBUG:
+                    print "URL request seen, no URLs to send."
 
             #if self.urlindex < 0:
             #    self.urls = self._geturls()
@@ -215,7 +230,7 @@ if __name__ == '__main__':
 
     print "BarkingOwl Dispatcher Starting."
 
-    dispatcher = Dispatcher(address='localhost',exchange='barkingowl')
+    dispatcher = Dispatcher(address='localhost',exchange='barkingowl', DEBUG=True)
     
     #url = {'targeturl': "http://timduffy.me/",
     #       'title': "TimDuffy.Me",

@@ -1,5 +1,5 @@
 import pika
-import simplejson
+import json
 from time import strftime
 import uuid
 
@@ -37,7 +37,7 @@ class GlobalShutdown():
             'destinationid': 'broadcast',
             'message': packet
         }
-        jbody = simplejson.dumps(payload)
+        jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def reqcallback(self,ch,method,properties,body):

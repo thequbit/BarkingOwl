@@ -186,14 +186,13 @@ class Scraper(threading.Thread):
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
         success = True
         filetype = ""
-        #try:
-        if True:
+        try:
             payload = urllib2.urlopen(req,timeout=5).read(filesize)
             # record bandwidth used
             self.status['bandwidth'] += filesize
             filetype = magic.from_buffer(payload,mime=True)
-        #except Exception, e:
-        #    success = False;
+        except Exception, e:
+            success = False;
         return success,filetype
 
     def checkmatch(self,siteurl,link):

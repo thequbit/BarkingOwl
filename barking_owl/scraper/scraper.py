@@ -187,7 +187,11 @@ class Scraper(threading.Thread):
         success = True
         filetype = ""
         try:
-            payload = urllib2.urlopen(req,timeout=5).read(filesize)
+            try:
+                payload = urllib2.urlopen(req,timeout=5).read(filesize)
+            except Exception, e:
+                if self.DEBUG:
+                    print "typelink(): an error occured: {0}".format(str(e))
             # record bandwidth used
             self.status['bandwidth'] += filesize
             filetype = magic.from_buffer(payload,mime=True)
@@ -214,7 +218,10 @@ class Scraper(threading.Thread):
         if linktype != "text/html":
             return False,links
         try:
-            html = urllib2.urlopen(url)
+            try:
+                html = urllib2.urlopen(url)
+            except Exception, e:
+                print "getpagelinks(): urllib2 error: '{0}'".format(str(e))
             # record bandwidth used
             self.status['bandwidth'] += len(str(html))
             soup = BeautifulSoup(html)

@@ -271,13 +271,13 @@ class Scraper(threading.Thread):
         else:
             level += 1
             if self.DEBUG:
-                print "Working on {0} links ...".format(len(links))
-                print "Links: {0}".format(links)
+                #print "Working on {0} links ...".format(len(links))
+                print "Processing Links: {0}".format(links)
             for _link in links:
                 link,linktext = _link
 
-                if self.DEBUG:
-                    print "Working on '{0}'".format(link)
+                #if self.DEBUG:
+                #    print "Working on '{0}'".format(link)
 
                 # we need to keep track of what links we have visited at each 
                 # level.  Here we are adding to our array each time a new level 
@@ -295,8 +295,8 @@ class Scraper(threading.Thread):
                 # get all of the links from the page
                 ignored = 0
                 success,allpagelinks = self.getpagelinks(self.status['urldata']['targeturl'],link)
-                if self.DEBUG:
-                    print "Page '{0}' has {1} links on it.".format(link,len(allpagelinks))
+                #if self.DEBUG:
+                #    print "Page '{0}' has {1} links on it.".format(link,len(allpagelinks))
 
                 if success == False:
                     continue
@@ -313,8 +313,8 @@ class Scraper(threading.Thread):
                     if( match == True ):
                         pagelinks.append((link,linktext))
 
-                if self.DEBUG:
-                    print "Number of Page Links: {0}.".format(len(pagelinks))
+                #if self.DEBUG:
+                #    print "Number of Page Links: {0}.".format(len(pagelinks))
 
                 # Some of the links that were returned from this page might be pdfs,
                 # if they are, add them to the list of pdfs to be returned 'retlinks'

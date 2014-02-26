@@ -271,8 +271,8 @@ class Scraper(threading.Thread):
         else:
             level += 1
             if self.DEBUG:
-                #print "Working on {0} links ...".format(len(links))
-                print "Processing Links: {0}".format(links)
+                print "Working on {0} links ...".format(len(links))
+                #print "Processing Links: {0}".format(links)
             for _link in links:
                 link,linktext = _link
 

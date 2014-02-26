@@ -139,6 +139,11 @@ class ScraperWrapper(threading.Thread):
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
         return
 
+    def _scraperstart(self):
+        if self.scraper.start == False:
+            self.scraper.start()
+        self.scraper.begin()
+
     # message handler
     def reqcallback(self,ch,method,properties,body):
         #try:
@@ -153,9 +158,15 @@ class ScraperWrapper(threading.Thread):
                     if self.scraping == False:
                         #print "[Wrapper] Launching Scraper on URL: '{0}'".format(response['message']['targeturl'])
                         self.scraper.seturldata(response['message'])
-                        if self.scraper.started == False:
-                            self.scraper.start()
-                        self.scraper.begin()
+                        #if self.scraper.started == False:
+                        #    self.scraper.start()
+                        if self.DEBUG:
+                            print "Launching scraper thread ..."
+                        thread = threading.Thread(target=self._scraperstart)
+                        thread.start()
+                        #self._scraperstart()
+                        if self.DEBUG:
+                            print " ... Scraper launched successfully."
                         self.scraping = True
 
             elif response['command'] == 'scraper_finished':

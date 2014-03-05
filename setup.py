@@ -10,7 +10,7 @@ find specific document types such as PDFs.
 
 setup(
     name="BarkingOwl",
-    version="0.0.8",
+    version="0.0.11",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",

@@ -1,7 +1,9 @@
 BarkingOwl
 ==========
 
-Message Bus Based Web Scraping Infrastructure
+Scalable web crawler.
+
+BarkingOwl is a scalable web crawler intended to be used to find specific document types such as PDFs.
 
 ####Background and Description####
 
@@ -9,22 +11,31 @@ Barking Owl came out of the need presented at a Hacks and Hackers Rochester (#hh
 A journalist expressed his need for a tool that would assist him in looking for key words within PDFs posted
 to town websites, such as meeting minutes.
 
-####Proposed Solution####
+####Objective####
 
 I wanted to make the code for this project as reusable as possible as I knew it had several parallels to other
 work I had been doing and wanted to do in the future.  The solution was a architecture that would allow for 
-significant scalability and extensibility.  The solution being proposed is outlined in a 5-part design series here:
+significant scalability and extensibility.
 
-[Part I](http://timduffy.me/posts/barkingowl_architecture_design.html)
+####How to get started####
 
-[Part II](http://timduffy.me/posts/barkingowl_scraper_design.html)
+BarkingOwl is on teh pypi network, thus it can be installed using pip:
 
-[Part III](http://timduffy.me/posts/barkingowl_the_order_of_things.html)
+    > pip install barking_owl
 
-[Part IV](http://timduffy.me/posts/barkingowl_dispatcher_design.html)
+####Stand Alone Scraper####
 
-[Part V](http://timduffy.me/posts/barkingowl_working_code.html)
+Once installed, BarkingOwl can be used in a number of ways.  First, the scraper can stand alone and be invoked with no interaction with the message bus.  This method is convient for use with a single website that needs to be scraped for specific document types, or if a site outline needs to be established.
+
+####Dispatched Scrapers####
+
+The other method of using the BarkingOwl infastruction is to leverage the massive scalability of the message bus.  BarkingOwl leverages the fexability, speed, and scalability of the RabitMQ (0mq) system.  A single Dispatcher instance can be launched and dispatch URLs to be scraped to any number of scrapers (hundreds or thousands if so need).
+
+The system has been tested by it's author, [Timothy Duffy](https://github.com/thequbit) with 256 scapers successfully.
 
 ####Documentation####
 
-Coming soon? yes ... coming soon.
+Dispatcher documentation can be found here: [README.md](https://github.com/thequbit/BarkingOwl/tree/master/barking_owl/dispatcher/README.md)
+
+Scraper documentation can be found here: [README.md](https://github.com/thequbit/BarkingOwl/blob/master/barking_owl/scraper/README.md)
+

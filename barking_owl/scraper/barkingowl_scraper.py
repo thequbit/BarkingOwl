@@ -10,7 +10,7 @@ def StartScraper(exchange="barkingowl"):
 if __name__ == '__main__':
     #print "Starting BarkingOwl-Scraper."
 
-    #try:
+    try:
         StartScraper()
-    #except:
-    #    print "Exiting BarkingOwl-Scraper."
+    except:
+        print "Exiting BarkingOwl-Scraper."

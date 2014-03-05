@@ -41,6 +41,15 @@ class BusAccess(object):
 
         self.reqchan.start_consuming()
 
+    def stoplistening(self):
+
+        """
+        Stops the pika listener on the message bus.
+        """
+
+        if self.DEBUG:
+            print "Halting listening on bus ..."
+
     def setcallback(self,callback):
 
         """
@@ -97,6 +106,8 @@ if __name__ == '__main__':
     ba = BusAccess(myid=myid,DEBUG=True)
     
     ba.setcallback(callback)
+
+    ba.sendmsg('*','broadcast',{'msg':'test'})
 
     ba.listen()
 

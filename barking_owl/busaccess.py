@@ -69,6 +69,9 @@ class BusAccess(object):
         to the message bus.
         """
 
+        if self.DEBUG:
+            print "Attempting to send message to bus ..."
+
         payload = {
             'command': command,
             'sourceid': self.myid,

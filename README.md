@@ -19,7 +19,7 @@ significant scalability and extensibility.
 
 ####How to get started####
 
-BarkingOwl is on teh pypi network, thus it can be installed using pip:
+BarkingOwl is on the pypi network, thus it can be installed using pip:
 
     > pip install barking_owl
 
@@ -35,7 +35,7 @@ The system has been tested by it's author, [Timothy Duffy](https://github.com/th
 
 ####Documentation####
 
-Dispatcher documentation can be found here: [README.md](https://github.com/thequbit/BarkingOwl/tree/master/barking_owl/dispatcher/README.md)
+Dispatcher documentation can be found here: [README.md](https://github.com/thequbit/BarkingOwl/blob/master/barking_owl/dispatcher/README.md)
 
 Scraper documentation can be found here: [README.md](https://github.com/thequbit/BarkingOwl/blob/master/barking_owl/scraper/README.md)
 

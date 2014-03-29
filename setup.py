@@ -10,7 +10,7 @@ find specific document types such as PDFs.
 
 setup(
     name="BarkingOwl",
-    version="0.0.13",
+    version="0.0.14",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",
@@ -26,7 +26,6 @@ setup(
       "pika==0.9.13",
       "python-dateutil==2.2",
       "python-magic==0.4.6",
-      #"simplejson==3.3.3",
       "six==1.5.2",
       "wsgiref==0.1.2",
     ], 

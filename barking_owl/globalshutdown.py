@@ -27,6 +27,9 @@ class GlobalShutdown():
         self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
     def shutdown(self):
+        """
+        shutdown() sends the global shutdown command to the message bus.
+        """
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'availabledatetime': str(isodatetime)

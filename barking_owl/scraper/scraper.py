@@ -9,7 +9,10 @@ import sys
 
 class Scraper(threading.Thread):
 
-    def __init__(self,uid,DEBUG=False):
+    def __init__(self,uid=str(uuid.uuid4()),DEBUG=False):
+        """
+        __init__() constructor setups the threading enviornment and status variables.
+        """
 
         threading.Thread.__init__(self)
         
@@ -29,7 +32,7 @@ class Scraper(threading.Thread):
         self.DEBUG = DEBUG
 
         # start a timer to see if we should be exiting
-        threading.Timer(self.interval,self.checkshutdown).start()
+        threading.Timer(self.interval,self._checkshutdown).start()
 
         self.finishedCallback = None
         self.startedCallBack = None
@@ -39,29 +42,74 @@ class Scraper(threading.Thread):
             print "Scraper INIT successful."
 
     def setCallbacks(self,finishedCallback=None,startedCallback=None,broadcastDocCallback=None):
-         self.finishedCallback = finishedCallback
-         self.startedCallback = startedCallback
-         self.broadcastDocCallback = broadcastDocCallback 
+        """
+        setCallbacks() sets the async call backs that should be called when an event happens.  There are three
+        different events that are called:
+
+            Finished - The scraper has finished scraping the target URL
+            Started - The scraper has become busy and has sctarted scraping the target URL
+            Document Found - The scraper has found a document
+
+        """
+        self.finishedCallback = finishedCallback
+        self.startedCallback = startedCallback
+        self.broadcastDocCallback = broadcastDocCallback 
 
     def setFinishedCallback(self,callback):
+        """
+        setFinishedCallback() defineds the function that should be called when the finished state occures.
+        """
         self.finishedCallback = callback
 
     def setStartedCallback(self,callback):
+        """
+        setStartedCallback() defineds the function that should be called when the started state occures.
+        """
         self.startedCallback = callback
 
     def setBroadcastDocCallback(self,callback):
+        """
+        setBroadcastDocCallback() defineds the function that should be called when the broadcast doc state occures.
+        """
         self.broadcastDocCallback = callback
 
     def seturldata(self,urldata):
+        """
+        seturldata() sets the url information for the scraper.  This information should be presented in the following
+        dictionary format:
+
+            url = {
+                'targeturl': targeturl, # the root url to be scraped
+                'title': title, # a title for the URL
+                'description': descritpion, # a description of the url
+                'maxlinklevel': maxlinklevel, # the max link level for the scraper to follow to
+                'creationdatetime': creationdatetime, # ISO creation date and time
+                'doctype': doctype, # the text for the magic lib to look for (ex. 'application/pdf')
+                'frequency': frequency, # the frequency in minutes the URL should be scraped
+                'allowdomains': [], # a list of allowable domains for the scraper to follow
+            }
+    
+        If the above fields are not included, then the scraper will not work as expected, but may not throw an error.
+
+        Note: Any additional fields can be included, and will be include with and pass along when a document is found.
+        """
         self.status['urldata'] = urldata
 
     def stop(self):
+        """
+        stop() begins the steps needed to stop the scraper.
+
+        Note: it can be several seconds before the scraper actually stops.
+        """
         self._stop.set()
 
     def stopped(self):
+        """
+        stopped() returns the status of the stopped event.  If true, the scraper is working on stopping.
+        """
         return self._stop.isSet()
 
-    def checkshutdown(self):
+    def _checkshutdown(self):
         #
         # See if we need to stop ourselves
         #
@@ -71,14 +119,21 @@ class Scraper(threading.Thread):
             self.stop()
             raise Exception("Scraper Stopped - Scraper Exiting.")
         else:
-            threading.Timer(self.interval, self.checkshutdown).start()
+            threading.Timer(self.interval, self._checkshutdown).start()
 
     def run(self):
+        """
+        run() this is the threading subsystem entry point that is called when Scraper.start() is called. 
+        This function starts the scraper.
+        """
         if self.DEBUG:
             print "Starting Scraper ..."
         self.started = True
 
     def reset(self):
+        """
+        reset() resets the state of the scraper.  This should not be called unless the scraper is stopped.
+        """
 
         # reset globals
         self.status['processed'] = []
@@ -92,7 +147,13 @@ class Scraper(threading.Thread):
         if self.DEBUG:
             print "Scraper data reset successfully."
 
-    def begin(self): 
+    def begin(self):
+        """
+        begin() should be used as the entry point of the scraper once it has been configured using seturldata().
+        This funciton resets the state of the scraper, and then begins traversing the target url based on the 
+        rulls passed along with it.
+        """
+
         self.broadcaststart()
         self.status['busy'] = True
 
@@ -121,6 +182,9 @@ class Scraper(threading.Thread):
         self.status['busy'] = False
         
     def broadcastfinish(self):
+        """
+        broadcastfinish() calls the async scraper finished call back with status information within its payload.
+        """
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'processed': self.status['processed'],
@@ -140,6 +204,9 @@ class Scraper(threading.Thread):
             self.finishedCallback(payload)
 
     def broadcaststart(self):
+        """
+        broadcaststart() calls the scraper start async call back with status information within its payload.
+        """
         if self.DEBUG:
             print "Scraper Starting."
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
@@ -157,6 +224,10 @@ class Scraper(threading.Thread):
             self.startedCallback(payload)
 
     def broadcastdoc(self,docurl,linktext):
+        """
+        broadcastdoc() calls the scraper document found async call abck with status and document information within
+        its payload.
+        """
         if self.DEBUG:
             print "Doc Found: '{0}'.".format(docurl)
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
@@ -176,7 +247,9 @@ class Scraper(threading.Thread):
             self.broadcastDocCallback(payload)
 
     def typelink(self,link,filesize=1024):
-        
+        """
+        typelink() will download a link, and then deturmine it's file type using magic numbers.
+        """
         if self.stopped():
             if self.DEBUG:
                 print 'typelink() saw the stopped flag - exiting scraper.'
@@ -200,6 +273,9 @@ class Scraper(threading.Thread):
         return success,filetype
 
     def checkmatch(self,siteurl,link):
+        """
+        checkmatch() is used to derumine of a link is linking to the parent domain or another domain.
+        """
         sitematch = True
         if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
              (len(link) >= 8 and link[0:8].lower() == "https://") or
@@ -209,6 +285,9 @@ class Scraper(threading.Thread):
         return sitematch
 
     def getpagelinks(self,siteurl,url):
+        """
+        getpagelinks() will return a list of all of the link on a html page that is passed.
+        """
         links = []
         success,linktype = self.typelink(url)
         if success == False:
@@ -264,6 +343,11 @@ class Scraper(threading.Thread):
         return success,links
 
     def followlinks(self,links,level=0):
+        """
+        followlinks() is the heart of the Barking Owl Scraper.  It follows links to a specified link level,
+        reporting if any of those links are documents that it should be identifying.  This function is a
+        recursive function and can run for a very long time if the link level is not defined appropreately.
+        """
         retlinks = []
         if( level >= self.status['urldata']['maxlinklevel'] ):
             # made it to bottom link level, no need to continue

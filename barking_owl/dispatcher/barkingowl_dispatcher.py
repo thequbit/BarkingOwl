@@ -11,9 +11,13 @@ import datetime
 
 class Dispatcher():
 
-    def __init__(self,address='localhost',exchange='barkingowl', DEBUG=False):
-        # create our uuid
-        self.uid = str(uuid.uuid4())
+    def __init__(self,address='localhost',exchange='barkingowl',uuid=str(uuid.uuid4()),DEBUG=False):
+       """
+       __init__() constructor will setup message bus as well as status variables.
+       """ 
+
+       # create our uuid
+        self.uid = uuid
 
         self.address = address
         self.exchange = exchange
@@ -30,21 +34,17 @@ class Dispatcher():
         result = self.reqchan.queue_declare(exclusive=True)
         queue_name = result.method.queue
         self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
-        self.reqchan.basic_consume(self.reqcallback,queue=queue_name,no_ack=True)
+        self.reqchan.basic_consume(self._reqcallback,queue=queue_name,no_ack=True)
        
         self.respcon = pika.BlockingConnection(pika.ConnectionParameters(host=self.address))
         self.respchan = self.respcon.channel()
         self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
-    def _geturls(self):
-        urls = Urls()
-        allurls = urls.getallurldata()
-        return allurls
-
     def seturls(self,urls):
         """
         seturls() expects an array of dictionaries that hold url data.  The format should
         be the following:
+        
             url = {'targeturl': targeturl, # the root url to be scraped
                    'title': title, # a title for the URL
                    'description': descritpion, # a description of the url
@@ -52,7 +52,9 @@ class Dispatcher():
                    'creationdatetime': creationdatetime, # ISO creation date and time
                    'doctype': doctype, # the text for the magic lib to look for (ex. 'application/pdf')
                    'frequency': frequency, # the frequency in minutes the URL should be scraped
+                   'allowdomains': [], # a list of allowable domains for the scraper to follow
                   }
+        
         note: every time this function is called, the url list is reset, including the last
         time any scraper ran agaist a url.
         """
@@ -66,9 +68,15 @@ class Dispatcher():
         self.urls = urls
 
     def getnexturlindex(self):
+        """
+        getnexturlindex() returns the index withint he self.urls list of the url to dispatch to 
+        the scrapers.  This function has the logic within it to return the index of the url that
+        has not run within the last defined frequency window.
+        """
+
         urlindex = -1
         for i in range(0,len(self.urls)):
-            now = datetime.datetime.strptime(strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S") # gross ...
+            now = datetime.datetime.now() #strptime(strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S") # gross ...
             # check to see if it ever ran
             if self.urls[i]['startdatetime'] == "":
                 if self.DEBUG:
@@ -101,6 +109,11 @@ class Dispatcher():
         return urlindex
              
     def start(self):
+        """
+        start() starts the Dispatcher message bus consumer.  This allows the Dispatcher to being listening for 
+        scrapers that come online.
+        """
+
         #self.urls = self._geturls()
         #self.broadcasturls()
         #self.urlindex = len(self.urls)-1
@@ -135,6 +148,12 @@ class Dispatcher():
     #    self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     def sendurl(self,urlindex,destinationid):
+        """
+        sendurl() dispatches a URL to a waiting scraper.  It takes in the urlindex which points to a
+        url within the self.urls list, as well as a destination ID of the scraper to dispatch the
+        url to.
+        """
+
         #targeturl = self.urls[urlindex]['targeturl']
         #title = self.urls[urlindex]['title']
         #description = self.urls[urlindex]['description']
@@ -168,7 +187,7 @@ class Dispatcher():
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
     # message handler
-    def reqcallback(self,ch,method,properties,body):
+    def _reqcallback(self,ch,method,properties,body):
         response = json.loads(body)
         #print "Processing Message:\n\t{0}".format(response)
         if response['command'] == 'scraper_finished':

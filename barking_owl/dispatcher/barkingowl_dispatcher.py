@@ -12,11 +12,11 @@ import datetime
 class Dispatcher():
 
     def __init__(self,address='localhost',exchange='barkingowl',uuid=str(uuid.uuid4()),DEBUG=False):
-       """
-       __init__() constructor will setup message bus as well as status variables.
-       """ 
+        """
+        __init__() constructor will setup message bus as well as status variables.
+        """ 
 
-       # create our uuid
+        # create our uuid
         self.uid = uuid
 
         self.address = address

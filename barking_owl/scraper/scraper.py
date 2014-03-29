@@ -6,6 +6,8 @@ from urlparse import urljoin
 import magic
 from time import strftime
 import sys
+import urlparse
+import uuid
 
 class Scraper(threading.Thread):
 
@@ -277,11 +279,13 @@ class Scraper(threading.Thread):
         checkmatch() is used to derumine of a link is linking to the parent domain or another domain.
         """
         sitematch = True
+        urldata = urlparse.urlparse(link)
         if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
              (len(link) >= 8 and link[0:8].lower() == "https://") or
              (len(link) >= 3 and link[0:6].lower() == "ftp://") ): 
-            if(link[:link.find("/",7)+1] != siteurl):
-                sitematch = False
+            if(urldata.netloc != siteurl):
+                if urldata.netloc not in self.status['urldata']['allowdomains']:
+                    sitematch = False
         return sitematch
 
     def getpagelinks(self,siteurl,url):

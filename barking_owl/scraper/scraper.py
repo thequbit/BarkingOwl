@@ -356,43 +356,43 @@ class Scraper(threading.Thread):
 
             return False,links
         try:
-            #try:
-            html = urllib2.urlopen(url)
-            #except Exception, e:
-            #    print "getpagelinks(): urllib2 error: '{0}'".format(str(e))
+            try:
+                html = urllib2.urlopen(url)
+            except Exception, e:
+                if self.DEBUG:
+                    print "getpagelinks(): urllib2 error: '{0}'".format(str(e))
+            
             # record bandwidth used
             self.status['bandwidth'] += len(str(html))
             soup = BeautifulSoup(html)
-            atags = soup.find_all('a', href=True)
-            for tag in atags:
-                if len(tag.contents) >= 1:
-                    linktext = unicode(tag.string).strip()
-                else:
-                    linktext = ""
-                rawhref = tag['href']
-                match = self.checkmatch(siteurl,rawhref)
-                abslink = urljoin(siteurl,rawhref)
-                links.append((match,abslink,linktext))
-                
-                # there are some websites that have absolute links that go above
-                # the root ... why this is I have no idea, but this is how i'm
-                # solving it
-                uprelparts = rawhref.split('../')
-                if len(uprelparts) == 1:
+            tagtypes = [
+                ('a','href'),
+                ('embed','src'),
+                ('iframe','src'),
+            ]
+            for tagtype,verb in tagtypes:
+                tags = soup.find_all(tagtype)
+                for tag in tags:
+                    if len(tag.contents) >= 1:
+                        linktext = unicode(tag.string).strip()
+                    else:
+                        linktext = ""
+
+                    try:
+                        rawhref = tag[verb]
+                    except:
+                        if self.DEBUG:
+                            print "tag ('{0}') didn't have verb ('{1}'), ignoring.".format(tag,verb)
+                        continue
+
+                    match = self.checkmatch(siteurl,rawhref)
                     abslink = urljoin(siteurl,rawhref)
                     links.append((match,abslink,linktext))
-                elif len(uprelparts) == 2:
-                    abslink = urljoin(siteurl,uprelparts[1])
-                    links.append((match,abslink,linktext))
-                elif len(uprelparts) == 3:
-                    newhref = "../{0}".format(uprelparts[2])
-                    abslink = urljoin(siteurl,newhref)
-                    links.append((match,abslink,linktext))
-                    abslink = urljoin(siteurl,uprelparts[2])
-                    links.append((match,abslink,linktext))
-                else:
-                    abslink = urljoin(siteurl,rawhref)
-                    links.append((match,abslink,linktext))
+        
+                    abslinks = self.adjusturl(siteurl,rawhref)
+                    for l in abslinks:
+                        links.append((match,l,linktext))
+
         except Exception, e:
             links = []
             sucess = False
@@ -405,6 +405,36 @@ class Scraper(threading.Thread):
                 print "Found {0} links from URL: '{1}'.".format(len(links),url)
 
         return success,links
+
+    def adjusturl(self,siteurl,rawhref):
+
+        # there are some websites that have absolute links that go above
+        # the root ... why this is I have no idea, but this is how i'm
+        # solving it
+        links = []
+        uprelparts = rawhref.split('../')
+        if len(uprelparts) == 1:
+            abslink = urljoin(siteurl,rawhref)
+            links.append(abslink)
+        
+        elif len(uprelparts) == 2:
+            abslink = urljoin(siteurl,uprelparts[1])
+            links.append(abslink)
+        
+        elif len(uprelparts) == 3:
+            newhref = "../{0}".format(uprelparts[2])
+
+            abslink = urljoin(siteurl,newhref)
+            links.append(abslink)
+
+            abslink = urljoin(siteurl,uprelparts[2])
+            links.append(abslink)
+        
+        else:
+            abslink = urljoin(siteurl,rawhref)
+            links.append(abslink)
+
+        return links
 
     def followlinks(self,links,level=0):
         """
@@ -500,7 +530,7 @@ class Scraper(threading.Thread):
             
 
                 if self.DEBUG:
-                    print "Found {0} links after following url: '{0}'".format(link)
+                    print "Done processing url: '{0}'".format(link)
 
             level -= 1
 

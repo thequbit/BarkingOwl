@@ -95,6 +95,10 @@ class Scraper(threading.Thread):
 
         Note: Any additional fields can be included, and will be include with and pass along when a document is found.
         """
+        
+        if self.DEBUG:
+            print "URL data payload: {0}".format(self.status['urldata'])
+
         self.status['urldata'] = urldata
 
     def stop(self):
@@ -176,9 +180,9 @@ class Scraper(threading.Thread):
             self.followlinks(links=links,
                              level=0)
             self.broadcastfinish()
-        except:
+        except Exception, e:
             if self.DEBUG:
-                print "Error: {0}".format(sys.exc_info()[0])
+                print "Error: {0}, {1}".format(str(e),sys.exc_info()[0])
             raise Exception('Scraper Error - Scraper Exiting.')
         
         self.status['busy'] = False
@@ -202,6 +206,10 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
+
+        if self.DEBUG:
+            print "Calling 'finished' callback function ..."
+
         if self.finishedCallback != None:
             self.finishedCallback(payload)
 
@@ -222,6 +230,10 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
+
+        if self.DEBUG:
+            print "Calling 'starting' callback function ..."
+
         if self.startedCallback != None:
             self.startedCallback(payload)
 
@@ -230,8 +242,10 @@ class Scraper(threading.Thread):
         broadcastdoc() calls the scraper document found async call abck with status and document information within
         its payload.
         """
+
         if self.DEBUG:
             print "Doc Found: '{0}'.".format(docurl)
+
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'docurl': docurl,
@@ -245,6 +259,10 @@ class Scraper(threading.Thread):
             'destinationid': 'broadcast',
             'message': packet
         }
+
+        if self.DEBUG:
+            print "Calling 'found document' callback function ..."
+
         if self.broadcastDocCallback != None:
             self.broadcastDocCallback(payload)
 
@@ -258,20 +276,41 @@ class Scraper(threading.Thread):
             self.reset()
             raise Exception('Scraper thread stopped.')
 
+        if self.DEBUG:
+            print "Attempting to type link: '{0}' (using filesize: {1})".format(link,filesize)
+
         req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
         success = True
         filetype = ""
         try:
-            #try:
-            payload = urllib2.urlopen(req,timeout=5).read(filesize)
-            #except Exception, e:
-            #    if self.DEBUG:
-            #        print "typelink(): an error occured: {0}".format(str(e))
+
+            # this loop is going to try and download the link 5 times.  We do this because 
+            # the site may not be ready (ie. we may be thrashing the hell out of it)
+            errorcount = 0
+            while(errorcount < 5):
+                try:
+                    payload = urllib2.urlopen(req,timeout=5).read(filesize)
+                    if self.DEBUG:
+                        print "Successfully downloaded the first {0} bytes of '{1}'.".format(filesize,link)
+                    break
+                except Exception, e:
+                    if self.DEBUG:
+                        print "Error within typelink while trying to download {0} bytes from URL:\n\t{1}\n".format(link,str(e))
+                    if str(e) != 'time out':
+                        raise Exception(e)
+                    else:
+                        errorcount += 1
+
+                        # I don't like doing this, but it can help success rates.
+                        time.sleep(1)
+
             # record bandwidth used
             self.status['bandwidth'] += filesize
             filetype = magic.from_buffer(payload,mime=True)
         except Exception, e:
             success = False;
+            if self.DEBUG:
+                print "An error has occured in the typelink() function:\n\tURL: {0}\n\tError: {1}".format(link,str(e))
         return success,filetype
 
     def checkmatch(self,siteurl,link):
@@ -286,19 +325,35 @@ class Scraper(threading.Thread):
             if(urldata.netloc != siteurl):
                 if urldata.netloc not in self.status['urldata']['allowdomains']:
                     sitematch = False
+
+        if self.DEBUG:
+            print "Comparing siteurl='{0}', link='{1}', with sitematch='{2}'.".format(siteurl,link,sitematch)
+
         return sitematch
 
     def getpagelinks(self,siteurl,url):
         """
         getpagelinks() will return a list of all of the link on a html page that is passed.
         """
+
+        if self.DEBUG:
+            print "Getting page links for '{0}' ...".format(url)
+
         links = []
         success,linktype = self.typelink(url)
         if success == False:
             self.status['badlinks'].append(url)
+
+            if self.DEBUG:
+                print "Bad link found. ( {0} )".format(url)
+
             return success,links
         sucess = True
         if linktype != "text/html":
+            
+            if self.DEBUG:
+                print "URL is not of type text/html."
+
             return False,links
         try:
             #try:
@@ -341,9 +396,14 @@ class Scraper(threading.Thread):
         except Exception, e:
             links = []
             sucess = False
-            #if self.DEBUG:
-            #    print "An error occurred in getpagelinks(): {0}".format(str(e))
+            if self.DEBUG:
+                print "An error occurred in getpagelinks():\n\tURL: {0}\n\tError: {1}".format(url,str(e))
         self.status['linkcount'] += len(links)
+        
+        if self.DEBUG:
+            if self.DEBUG:
+                print "Found {0} links from URL: '{1}'.".format(len(links),url)
+
         return success,links
 
     def followlinks(self,links,level=0):
@@ -437,6 +497,11 @@ class Scraper(threading.Thread):
                                self.broadcastdoc(gotlink,linktext)
                        else:
                            ignored += 1
+            
+
+                if self.DEBUG:
+                    print "Found {0} links after following url: '{0}'".format(link)
+
             level -= 1
 
         for l in links:

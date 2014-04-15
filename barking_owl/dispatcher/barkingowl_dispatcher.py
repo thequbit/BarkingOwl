@@ -261,13 +261,14 @@ if __name__ == '__main__':
     #      }
     
     url = {
-        'targeturl': "http://www.cityofrochester.gov/",
-        'title': "City of Rochester",
-        'description': "City of Rochester, NY Website",
+        'targeturl': "http://www.scottsvilleny.org/",
+        'title': "Village of Scottsville",
+        'description': "Village of Scottsville, NY Website",
         'maxlinklevel': 3,
         'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
         'doctype': 'application/pdf',
         'frequency': 1,
+        'allowdomains': [],
     }
 
     urls = []

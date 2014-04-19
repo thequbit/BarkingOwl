@@ -49,11 +49,28 @@ The simplest way to use the scraper is using the following:
                     'maxlinklevel': 1, 
                     'doctype': 'application/pdf', 
                     'targeturl': 'http://targetwebsite.com',
+                    'allowdomains': [],
                     'myfield': 'anything I want!',
                 }, 
                 'linktext': u'A PDF Document'
             }
         }
+        """
+        
+        """
+        From the seturldata() function within scraper.py:
+        
+        url = {
+            'targeturl': targeturl,                  # the root url to be scraped
+            'title': title,                          # a title for the URL
+            'description': descritpion,              # a description of the url
+            'maxlinklevel': maxlinklevel,            # the max link level for the scraper to follow to
+            'creationdatetime': creationdatetime,    # ISO creation date and time
+            'doctype': doctype,                      # the text for the magic lib to look for (ex. 'application/pdf')
+            'frequency': frequency,                  # the frequency in minutes the URL should be scraped
+            'allowdomains': [],                      # a list of allowable domains for the scraper to follow
+        }
+        
         """
         
         print payload;
@@ -68,9 +85,9 @@ The simplest way to use the scraper is using the following:
 
         # set our scraper callbacks
         scraper.setFinishedCallback(
-            finishedCallback=finished,         # called when the scraper has finished scraping the entire site
-            startedCallback=started,           # called when the scraper successfully starts
-            broadcastDocCallback=docfound, # called every time a document is found
+            finishedCallback=finished,               # called when the scraper has finished scraping the entire site
+            startedCallback=started,                 # called when the scraper successfully starts
+            broadcastDocCallback=docfound,           # called every time a document is found
         )
     
         # create the URL payload that will be sent to the 

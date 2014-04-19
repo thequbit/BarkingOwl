@@ -4,13 +4,14 @@ long_description = \
 '''
 
 BarkingOwl is a scalable web crawler intended to be used to
-find specific document types such as PDFs.
+find specific document types on websites, such as PDFs, XLS, 
+TXT, HTML, etc.
 
 '''
 
 setup(
     name="BarkingOwl",
-    version="0.0.15",
+    version="0.0.16",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",

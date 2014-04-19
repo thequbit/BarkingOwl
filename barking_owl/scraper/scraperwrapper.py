@@ -227,7 +227,8 @@ class ScraperWrapper(threading.Thread):
                 self.broadcastsimplestatus()
 
             elif response['command'] == 'reset_scraper':
-                self.resetscraper()
+                if response['destinationid'] == self.uid:
+                    self.resetscraper()
 
             elif response['command'] == 'shutdown':
                 if response['destinationid'] == self.uid:

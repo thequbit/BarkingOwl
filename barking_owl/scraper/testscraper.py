@@ -54,6 +54,7 @@ def test_followlinks(scraper):
         'docdescription': 'HTML Document',
         'doctype': 'text/html',
         'disparchdatetime': isodatetime,
+        'allowdomains': [],
     }
     print "\nTesting followlinks() ..."
 

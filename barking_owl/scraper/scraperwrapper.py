@@ -9,7 +9,7 @@ from scraper import Scraper
 
 class ScraperWrapper(threading.Thread):
 
-    def __init__(self,address='localhost',exchange='barkingowl',DEBUG=False):
+    def __init__(self,address='localhost',exchange='barkingowl',broadcastinterval=5,DEBUG=False):
         """
         __init__() constructor setups up the message bus, inits the thread, and sets up 
         local status variables.
@@ -21,7 +21,7 @@ class ScraperWrapper(threading.Thread):
         self.address = address
         self.exchange = exchange
         self.DEBUG=DEBUG
-        self.interval = 1
+        self.interval = broadcastinterval
 
         # create scraper instance
         self.scraper = Scraper(uid=self.uid,DEBUG=DEBUG)
@@ -77,22 +77,25 @@ class ScraperWrapper(threading.Thread):
         broadcastavailable() broadcasts a message to the message bus saying the scraper is available
         to be dispatched a new url to begin scraping.
         """
-        if self.scraper.status['busy'] == True:
-            # we are currently scraping, so we are not available - don't broadcast
-            return
 
-        isodatetime = strftime("%Y-%m-%d %H:%M:%S")
-        packet = {
-            'availabledatetime': str(isodatetime)
-        }
-        payload = {
-            'command': 'scraper_available',
-            'sourceid': self.uid,
-            'destinationid': 'broadcast',
-            'message': packet
-        }
-        jbody = json.dumps(payload)
-        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        # make sure we are not currently scraping
+        if self.scraper.status['busy'] == False:
+
+            isodatetime = strftime("%Y-%m-%d %H:%M:%S")
+            packet = {
+                'availabledatetime': str(isodatetime)
+            }
+            payload = {
+                'command': 'scraper_available',
+                'sourceid': self.uid,
+                'destinationid': 'broadcast',
+                'message': packet
+            }
+            jbody = json.dumps(payload)
+            self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+
+        # boadcast our simple status to the bus
+        self.broadcastsimplestatus()
 
         #
         # TODO: move this over to it's own timer, no need to do it here.

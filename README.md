@@ -21,7 +21,7 @@ significant scalability and extensibility.
 
 BarkingOwl is on the pypi network, thus it can be installed using pip:
 
-    > pip install barking_owl
+    > pip install barkingowl
 
 ####Stand Alone Scraper####
 

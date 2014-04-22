@@ -199,8 +199,11 @@ class ScraperWrapper(threading.Thread):
         #try:
         if True:
             response = json.loads(body)
-            if self.DEBUG:
-                print "Processing Message:\n\t{0}".format(response['command'])
+            
+            # commented this out because it made the logs almost impossible to read
+            
+            #if self.DEBUG:
+            #    print "Processing Message:\n\t{0}".format(response['command'])
             if response['command'] == 'url_dispatch':
                 if response['destinationid'] == self.uid:
                     #print "URL Dispatch Command Seen."

@@ -197,7 +197,7 @@ class Dispatcher():
                 targeturl = response['message']['urldata']['targeturl']
                 sourceid = response['sourceid']
                 if self.DEBUG:
-                    print urls[i]
+                    print self.urls[i]
                     print "Comparing targeturl: {0} to {1}, sourceid: {2} to {3}".format(targeturl,
                                                                                          self.urls[i]['targeturl'],
                                                                                          sourceid,

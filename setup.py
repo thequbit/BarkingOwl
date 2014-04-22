@@ -11,7 +11,7 @@ TXT, HTML, etc.
 
 setup(
     name="BarkingOwl",
-    version="0.0.16",
+    version="0.0.17",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",

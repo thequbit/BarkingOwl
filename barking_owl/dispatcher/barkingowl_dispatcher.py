@@ -11,9 +11,52 @@ import datetime
 
 class Dispatcher():
 
-    def __init__(self,address='localhost',exchange='barkingowl',uuid=str(uuid.uuid4()),DEBUG=False):
+    def __init__(self,address='localhost',exchange='barkingowl',selfdispatch=True,uuid=str(uuid.uuid4()),DEBUG=False):
         """
+
         __init__() constructor will setup message bus as well as status variables.
+
+        address
+            default
+                'localhost'
+            description
+                This is the address that the dispatcher will try and connect to the RabbitMQ 
+                bus on.
+
+        exchange
+            default
+                'barkingowl'
+            description
+                This is the RabbitMQ exchange that the dispatcher will be listening on and
+                dispatching to.  All other elements in this BarkingOwl universe should be 
+                on the same exchange name.
+
+        selfdispatch
+            default
+                True
+            description
+                BarkingOwl has two main modes: self dispatch, and queue dispatch.  In self 
+                dispatch mode the dispatched is loaded with URLs to dispatch once, and it
+                handles when they are dispatched based on frequency values.  In queue mode
+                a list of URLs are loaded into the dispatched and they are dispatched, in 
+                order, as soon as a scraper anouncement is seen.  Frequency information is
+                ignored in queue mode.
+
+        uuid
+            default
+                str(uuid.uuid4()) [ creates a UUID for you that is statisticly unused ]
+            description
+                All elements within the BarkingOwl universe must have unique id's.  The 
+                default value here creates a uuid for you to use.  If there is no reason
+                to have the uuid a specfic string, then use the default.
+
+        DEBUG
+            default
+                False
+            description
+                When set to True, lots of debug information will be printed to the screen.
+                Not recommended for production.
+               
         """ 
 
         # create our uuid
@@ -22,6 +65,9 @@ class Dispatcher():
         self.address = address
         self.exchange = exchange
         self.DEBUG = DEBUG
+        self.selfdispatch = selfdispatch
+
+        self.currenturlindex = 0
 
         self.urls = []
         self.scrapers = []
@@ -101,7 +147,8 @@ class Dispatcher():
                         break
                 else:
                     freq = self.urls[i]['frequency']
-                    finishdatetime = self.urls[i]['finishdatetime']
+                    finishdatetime = datetime.datetime.strptime(self.urls[i]['finishdatetime'],"%Y-%m-%d %H:%M:%S")
+                    #finishdatetime = self.urls[i]['finishdatetime']
                     if now >= finishdatetime + datetime.timedelta(minutes=int(freq)):
                         # it's been over the frequcy, we need to run again
                         urlindex = i
@@ -186,6 +233,17 @@ class Dispatcher():
         jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
+    def getremainingurlcount():
+        """
+        getremainingurlcount() - returns the remaining number of urls to be sent.  this
+                                 is only used when the dispatched is in queue mode.
+        """
+
+        # calc remaining urls to be sent
+        remaining = (len(self.urls)-1) - self.currenturlindex
+
+        return remaining
+
     # message handler
     def _reqcallback(self,ch,method,properties,body):
         response = json.loads(body)
@@ -203,7 +261,7 @@ class Dispatcher():
                                                                                          sourceid,
                                                                                          self.urls[i]['scraperid']
                     )
-                now = datetime.datetime.strptime(strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S") # gross ...
+                now = str(strftime("%Y-%m-%d %H:%M:%S"))
                 if self.urls[i]['targeturl'] == targeturl and self.urls[i]['scraperid'] == sourceid:
                     self.urls[i]['finishdatetime'] = now
                     if self.DEBUG:
@@ -217,7 +275,19 @@ class Dispatcher():
             if self.DEBUG:
                 print "Processing URL Request ..."
 
-            urlindex = self.getnexturlindex()
+            if self.selfdispatch == True:
+                urlindex = self.getnexturlindex()
+            else:
+                urlindex = -1
+                if self.DEBUG:
+                    print "Number of URLS: {0}".format(len(self.urls))
+                    print "Current URL Index: {0}".format(self.currenturlindex)
+                if len(self.urls) != 0 and self.currenturlindex <= len(self.urls)-1:
+                    # there are still urls to be sent, get the index of the next one
+                    urlindex = self.currenturlindex
+                    self.currenturlindex+=1
+                    if self.DEBUG:
+                        print "URL Found for Dispatch, urlindex: {0}".format(urlindex)
 
             if not urlindex == -1:
                 self.urls[urlindex]['startdatetime'] = str(strftime("%Y-%m-%d %H:%M:%S"))
@@ -243,39 +313,43 @@ class Dispatcher():
             #else:
             #    print "No URLs available for dispatch, ignoring request."
         if response['command'] == 'global_shutdown':
+            if self.DEBUG:
+                print "global_shutdown command seen, exiting."
             raise Exception("Dispatcher Exiting.")
 
 if __name__ == '__main__':
 
     print "BarkingOwl Dispatcher Starting."
 
-    dispatcher = Dispatcher(address='localhost',exchange='barkingowl', DEBUG=True)
+    dispatcher = Dispatcher(address='localhost',exchange='barkingowl',selfdispatch=False,DEBUG=True)
     
-    #url = {'targeturl': "http://timduffy.me/",
-    #       'title': "TimDuffy.Me",
-    #       'description': "Tim Duffy's Personal Website",
-    #       'maxlinklevel': 3,
-    #       'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
-    #       'doctype': 'application/pdf',
-    #       'frequency': 2,
-    #      }
+    url = {'targeturl': "http://timduffy.me/",
+           'title': "TimDuffy.Me",
+           'description': "Tim Duffy's Personal Website",
+           'maxlinklevel': 3,
+           'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
+           'doctype': 'application/pdf',
+           'frequency': 2,
+           'allowdomains': [],
+          }
     
-    url = {
-        'targeturl': "http://www.scottsvilleny.org/",
-        'title': "Village of Scottsville",
-        'description': "Village of Scottsville, NY Website",
-        'maxlinklevel': 3,
-        'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
-        'doctype': 'application/pdf',
-        'frequency': 1,
-        'allowdomains': [],
-    }
+    #url = {
+    #    'targeturl': "http://www.scottsvilleny.org/",
+    #    'title': "Village of Scottsville",
+    #    'description': "Village of Scottsville, NY Website",
+    #    'maxlinklevel': 3,
+    #    'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
+    #    'doctype': 'application/pdf',
+    #    'frequency': 1,
+    #    'allowdomains': [],
+    #}
 
     urls = []
     urls.append(url)
 
     dispatcher.seturls(urls)
 
+    #if True:
     try:
         dispatcher.start()
     except:

@@ -233,14 +233,16 @@ class Dispatcher():
         jbody = json.dumps(payload)
         self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
-    def getremainingurlcount():
+    def getremainingurlcount(self):
         """
         getremainingurlcount() - returns the remaining number of urls to be sent.  this
                                  is only used when the dispatched is in queue mode.
         """
 
         # calc remaining urls to be sent
-        remaining = (len(self.urls)-1) - self.currenturlindex
+        # len - 1 to represent index correctly (zero based)
+        # index - 1 because we are always one ahead of the last dispatched
+        remaining = (len(self.urls)-1) - (self.currenturlindex-1) 
 
         return remaining
 
@@ -282,6 +284,7 @@ class Dispatcher():
                 if self.DEBUG:
                     print "Number of URLS: {0}".format(len(self.urls))
                     print "Current URL Index: {0}".format(self.currenturlindex)
+                    print "getremainingurlcount(): {0}".format(self.getremainingurlcount())
                 if len(self.urls) != 0 and self.currenturlindex <= len(self.urls)-1:
                     # there are still urls to be sent, get the index of the next one
                     urlindex = self.currenturlindex
@@ -349,10 +352,10 @@ if __name__ == '__main__':
 
     dispatcher.seturls(urls)
 
-    #if True:
-    try:
+    if True:
+    #try:
         dispatcher.start()
-    except:
-        pass
+    #except:
+    #    pass
 
     print "BarkingOwl Dispatcher Exiting."

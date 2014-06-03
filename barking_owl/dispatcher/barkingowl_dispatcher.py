@@ -352,10 +352,10 @@ if __name__ == '__main__':
 
     dispatcher.seturls(urls)
 
-    if True:
-    #try:
+    #if True:
+    try:
         dispatcher.start()
-    #except:
-    #    pass
+    except:
+        pass
 
     print "BarkingOwl Dispatcher Exiting."

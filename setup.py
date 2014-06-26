@@ -11,7 +11,7 @@ TXT, HTML, etc.
 
 setup(
     name="BarkingOwl",
-    version="0.0.17",
+    version="0.1.0",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",
@@ -32,10 +32,10 @@ setup(
     ], 
     url="https://github.com/thequbit/BarkingOwl",
     classifiers=[
-      'Development Status :: 3 - Alpha',
+      'Development Status :: 4 - Beta',
       'Environment :: Console',
       'Intended Audience :: Developers',
       'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-      'Operating System :: POSIX',
+      #'Operating System :: POSIX',
     ],
 )

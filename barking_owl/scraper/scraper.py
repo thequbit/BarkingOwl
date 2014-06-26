@@ -8,6 +8,7 @@ from time import strftime
 import sys
 import urlparse
 import uuid
+import json
 
 class Scraper(threading.Thread):
 
@@ -30,6 +31,7 @@ class Scraper(threading.Thread):
         self.status['linkcount'] = 0
         self.status['level'] = -1
         self.status['urldata'] = {}
+        self.status['bandwidth'] = 0
 
         self.DEBUG = DEBUG
 
@@ -94,11 +96,69 @@ class Scraper(threading.Thread):
         If the above fields are not included, then the scraper will not work as expected, but may not throw an error.
 
         Note: Any additional fields can be included, and will be include with and pass along when a document is found.
+        
+        Note: Setting the URL data will reset the scraper.
+
         """
         
         if self.DEBUG:
             print "URL data payload: {0}".format(self.status['urldata'])
 
+
+        # error check all the things
+
+        if 'targeturl' not in urldata or urldata['targeturl'] == '':
+            if self.DEBUG:
+                print "Unassigned or invalid targeturl.  Check URL dictionary."
+            raise Exception('Unassigned or invalid Target URL.')
+
+        if 'doctype' not in urldata or urldata['doctype'] == '':
+            if self.DEBUG:
+                print "Unassigned or invalid doctype.  Check URL dictionary."
+            raise Exception('Unassigned or invalid Document Type.');
+        
+
+        # set defaults for not found keys in dict
+
+        if 'title' not in urldata:
+            if self.DEBUG:
+                print "'title' not found in URL dictionary, setting to targeturl."
+            urldata['title'] = urldata['targeturl']
+        
+        if 'description' not in urldata:
+            if self.DEBUG:
+                print "'description' not found in URL dictionary, setting to ''"
+            urldata['description'] = ''
+
+        if 'maxlinklevel' not in urldata:
+            if self.DEBUG:
+                print "'maxlinklevel' not found in URL dictionary, setting to 1"
+            urldata['maxlinklevel'] = 1
+
+        if 'creationdatetiem' not in urldata:
+            now = strftime("%Y-%m-%d %H:%M:%S") 
+            if self.DEBUG:
+                print "'creationdatetime' not found in URL dictionary, setting to '{0}'".format(now)
+            urlddata['creationdatetime'] = now
+
+        if 'frequency' not in urldata:
+            if self.DEBUG:
+                print "'frequency' not found in URL dictionary, setting to 24 hours"
+            urldata['frequency'] = 1440 # 24 hours in minutes
+
+        if 'allowdomains' not in urldata:
+            if self.DEBUG:
+                print "'allowdomains' not found in URL dictionary, setting to []"
+            urldata['allowdomains'] = []
+        
+
+        # reset the scraper
+
+        self.reset()
+
+
+        # set the url data local
+    
         self.status['urldata'] = urldata
 
     def stop(self):
@@ -123,6 +183,28 @@ class Scraper(threading.Thread):
             if self.DEBUG:
                 print "[{0}] Exiting.".format(self.uid)
             self.stop()
+
+            isodatetime = strftime("%Y-%m-%d %H:%M:%S")
+            packet = {
+                'processed': self.status['processed'],
+                'badlinks': self.status['badlinks'],
+                'linkcount': self.status['linkcount'],
+                'urldata': self.status['urldata'],
+                'bandwidth': self.status['bandwidth'],
+                'startdatetime': str(isodatetime)
+            }
+            payload = {
+                'command': 'scraper_finished',
+                'sourceid': self.uid,
+                'destinationid': 'broadcast',
+                'message': packet
+            }
+
+            #with open('finishedpayload.json','w') as f:
+            #    f.write(json.dumps(payload))
+            #    f.flush()
+             
+
             raise Exception("Scraper Stopped - Scraper Exiting.")
         else:
             threading.Timer(self.interval, self._checkshutdown).start()
@@ -212,6 +294,7 @@ class Scraper(threading.Thread):
 
         if self.finishedCallback != None:
             self.finishedCallback(payload)
+
 
     def broadcaststart(self):
         """
@@ -319,15 +402,22 @@ class Scraper(threading.Thread):
         """
         sitematch = True
         urldata = urlparse.urlparse(link)
+
+        if self.DEBUG:
+            print "checkmatch(): urlparse results:"
+            print urldata
+
         if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
              (len(link) >= 8 and link[0:8].lower() == "https://") or
              (len(link) >= 3 and link[0:6].lower() == "ftp://") ): 
-            if(urldata.netloc != siteurl):
-                if urldata.netloc not in self.status['urldata']['allowdomains']:
+            urlA = "{0}://{1}".format(urldata.scheme, urldata.netloc)
+            urlB = "{0}://{1}/".format(urldata.scheme, urldata.netloc)
+            if(urlA != siteurl and urlB != siteurl):
+                if urlA not in self.status['urldata']['allowdomains'] and urlB not in self.status['urldata']['allowdomains']:
                     sitematch = False
 
         if self.DEBUG:
-            print "Comparing siteurl='{0}', link='{1}', with sitematch='{2}'.".format(siteurl,link,sitematch)
+            print "Comparing siteurl='{0}', netloc='{1}', link='{2}', with sitematch='{3}'.".format(siteurl,urldata.netloc,link,sitematch)
 
         return sitematch
 
@@ -442,6 +532,10 @@ class Scraper(threading.Thread):
         reporting if any of those links are documents that it should be identifying.  This function is a
         recursive function and can run for a very long time if the link level is not defined appropreately.
         """
+
+        if self.DEBUG:
+            print "Folloing {0} Links on level {1} ...".format(len(links),level)
+
         retlinks = []
         if( level >= self.status['urldata']['maxlinklevel'] ):
             # made it to bottom link level, no need to continue
@@ -451,6 +545,15 @@ class Scraper(threading.Thread):
             if self.DEBUG:
                 print "Working on {0} links ...".format(len(links))
                 #print "Processing Links: {0}".format(links)
+
+            # we need to keep track of what links we have visited at each
+            # level.  Here we are adding to our array each time a new level
+            # is seen
+            if len(self.status['processed'])-1 < level:
+                if self.DEBUG:
+                    print "Current Level ({0}) does not exist within processed link list, adding.".format(level)
+                self.status['processed'].append([])
+
             for _link in links:
                 link,linktext = _link
 
@@ -460,14 +563,16 @@ class Scraper(threading.Thread):
                 # we need to keep track of what links we have visited at each 
                 # level.  Here we are adding to our array each time a new level 
                 # is seen
-                if len(self.status['processed'])-1 < level:
-                    self.status['processed'].append([])
+                #if len(self.status['processed'])-1 < level:
+                #    self.status['processed'].append([])
 
                 # see if we have already processed the link at max level, and we
                 # are at maxlevel.  If that is the case, it is pointless to do the 
                 # bottom of the tree over and over again.  Also don't do anything 
                 # if it is 404/bad link
                 if (link in self.status['processed'][level-1]) or link in self.status['badlinks']:
+                    if self.DEBUG:
+                        print "Link already processed, skipping. ({0})".format(link)
                     continue
 
                 # get all of the links from the page
@@ -477,14 +582,18 @@ class Scraper(threading.Thread):
                 #    print "Page '{0}' has {1} links on it.".format(link,len(allpagelinks))
 
                 if success == False:
+                    if self.DEBUG:
+                        print "Unable to get page links from link, skipping. ({0})".format(link)
                     continue
 
                 # sanitize the url link, and save it to our list of processed links
                 _l = urljoin(self.status['urldata']['targeturl'],link)
+                if self.DEBUG:
+                    print "Adding '{0}' to the processed list.".format(_l)
                 self.status['processed'][level-1].append(_l)
 
                 # Look at the links found on the page, and add those that are within
-                # the domain to 'thelinks'
+                # the allowed domains to pagelinks to process
                 pagelinks = []
                 for pagelink in allpagelinks:
                     match,link,linktext = pagelink
@@ -494,49 +603,72 @@ class Scraper(threading.Thread):
                 #if self.DEBUG:
                 #    print "Number of Page Links: {0}.".format(len(pagelinks))
 
-                # Some of the links that were returned from this page might be pdfs,
-                # if they are, add them to the list of pdfs to be returned 'retlinks'
+                # Some of the links that were returned from this page might be docs we are 
+                # interested in if they are, add them to the list of pdfs to be returned 'retlinks'
                 for _thelink in pagelinks:
-                   thelink,linktext = _thelink
-                   if not any(thelink in r for r in retlinks) and not any(thelink in r for r in self.status['processed']):
-                       success,linktype = self.typelink(thelink)
-                       if success == True:
-                           self.status['processed'][level-1].append(thelink)
-                           if linktype == self.status['urldata']['doctype']:
-                               retlinks.append((thelink,linktext))
-                               
-                               #broadcast the doc to the bus!
-                               self.broadcastdoc(thelink,linktext)
-                       else:
-                           ignored += 1
+                    thelink,linktext = _thelink
+                    if not any(thelink in r for r in retlinks) and not any(thelink in r for r in self.status['processed']):
+                        success,linktype = self.typelink(thelink)
+                        if success == True:
 
-                # Follow all of the link within the 'thelink' array
+                            if self.DEBUG:
+                                print "Link successfully typed as '{0}'.".format(linktype)
+
+                            # add the link to the list of processed links
+                            if thelink not in self.status['processed'][level-1]:
+                                self.status['processed'][level-1].append(thelink)
+
+                            # if the link is of the type we are looking for, add it to the 
+                            # list of docs to return
+                            if linktype == self.status['urldata']['doctype']:
+                                retlinks.append((thelink,linktext))
+                               
+                                #broadcast the doc to the bus!
+                                self.broadcastdoc(thelink,linktext)
+                        else:
+                            if self.DEBUG:
+                                print "WARNING: Link unsuccessfully typed! ({0})".format(thelink)
+                            ignored += 1
+                    else:
+                        if self.DEBUG:
+                            print "Link already processed, skipping. ({0})".format(thelink)
+
+                # Follow all of the valid links on the page, and find all of the docs.
                 gotlinks = self.followlinks(links=pagelinks,level=level)
 
+                for glink in gotlinks:
+                    l,t = glink
+                    if (l,t) not in retlinks:
+                        retlinks.append((l,t))
+
                 # go through all of the returned links and see if any of them are docs
-                for _gotlink in gotlinks:
-                    gotlink,linktext = _gotlink
-                    if not any(thelink in r for r in retlinks) and not any(thelink in r for r in self.status['processed']):
-                       success,linktype = self.typelink(gotlink)
-                       if success == True:
-                           self.status['processed'][level-1].append(gotlink)
-                           if linktype == self.status['urldata']['doctype']:
-                               retlinks.append((gotlink,linktext))
-                               
-                               #broadcast the doc to the bus!
-                               self.broadcastdoc(gotlink,linktext)
-                       else:
-                           ignored += 1
-            
+                #for _gotlink in gotlinks:
+                #    gotlink,linktext = _gotlink
+                #    if not any(gotlink in r for r in retlinks) and not any(gotlink in r for r in self.status['processed']):
+                #       success,linktype = self.typelink(gotlink)
+                #       if success == True:
+                #
+                #           if gotlink not in self.status['processed'][level-1]:
+                #               self.status['processed'][level-1].append(gotlink)
+                #
+                #           if linktype == self.status['urldata']['doctype']:
+                #               retlinks.append((gotlink,linktext))
+                #               
+                #               #broadcast the doc to the bus!
+                #               self.broadcastdoc(gotlink,linktext)
+                #       else:
+                #           ignored += 1
+                # 
 
                 if self.DEBUG:
                     print "Done processing url: '{0}'".format(link)
 
             level -= 1
 
-        for l in links:
-            if not l in self.status['processed']:
-                self.status['processed'].append(l)
+        #for l in links:
+        #    if not l in self.status['processed'][level-1]:
+        #        thelink, thelinktext = l
+        #        self.status['processed'][level-1].append(thelink)
 
         return retlinks
 

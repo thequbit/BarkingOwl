@@ -2,6 +2,7 @@ from scraper import Scraper
 import uuid
 from time import strftime
 import pprint
+import json
 
 def test_typelink(scraper):
     print "\nTesting typelink() ..."
@@ -43,25 +44,30 @@ def test_getpagelinks(scraper):
 
 def test_followlinks(scraper):
     links = []
-    links.append(('http://timduffy.me/blog.html','TimDuffy.me Blog'))
+    #links.append(('http://timduffy.me/blog.html','TimDuffy.me Blog'))
+    links.append(('http://timduffy.me/','TimDuffy.me'))
     isodatetime = strftime("%Y-%m-%d %H:%M:%S")
     urldata = {
         'urlid': 1,
         'targeturl': 'http://timduffy.me/',
-        'maxlinklevel': 1,
+        'maxlinklevel': 5,
         'creationdatetime': '2013-11-18 21:09:30',
-        'doctypetitle': 'HTML Document',
-        'docdescription': 'HTML Document',
-        'doctype': 'text/html',
+        #'doctypetitle': 'HTML Document',
+        #'docdescription': 'HTML Document',
+        #'doctype': 'text/html',
+        'doctype': 'application/pdf',
+                    
         'disparchdatetime': isodatetime,
         'allowdomains': [],
     }
     print "\nTesting followlinks() ..."
 
     scraper.status['urldata'] = urldata
-    pagelinks = scraper.followlinks(links=links,level=0)
+    docs = scraper.followlinks(links=links,level=0)
 
-    print "Number of Links: {0}".format(len(pagelinks))
+    print "Number of Docs found: {0}".format(len(docs))
+
+    return docs
 
 def text_getstatus(scraper):
     print scraper.status
@@ -71,27 +77,32 @@ def main():
 
     print "Creating Scraper() instance ..."
 
-    scraper = Scraper(uid)
+    scraper = Scraper(uid, DEBUG=True)
     scraper.run()
 
     print "Running tests ..."
 
     # typelink()
-    test_typelink(scraper)    
+    #test_typelink(scraper)    
 
     # checkmatch()
-    test_checkmatch(scraper)
+    #test_checkmatch(scraper)
 
     # getpagelinks
-    test_getpagelinks(scraper)
+    #test_getpagelinks(scraper)
 
     # folowlinks()
-    test_followlinks(scraper)
+    docs = test_followlinks(scraper)
+
+    print "Documents found: {0}".format(json.dumps(docs))
 
     # get scraper status
-    text_getstatus(scraper)
+    #text_getstatus(scraper)
 
-    scraper.stop();
+    try:
+        scraper.stop();
+    except:
+        pass
 
     print "Done."
 

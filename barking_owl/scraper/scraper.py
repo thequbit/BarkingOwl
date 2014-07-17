@@ -415,7 +415,7 @@ class Scraper(): #threading.Thread):
 
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
-            'docurl': doc_url,
+            'doc_url': doc_url,
             'link_text': link_text,
             'url_data': self.status['url_data'],
             'scrape_datetime': str(isodatetime)

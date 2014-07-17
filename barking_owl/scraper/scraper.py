@@ -10,6 +10,175 @@ import urlparse
 import uuid
 import json
 
+_DEBUG = True
+
+def log(entry):
+    if _DEBUG:
+        print entry
+
+def type_link(link, file_size=1024, sleep_time=2):
+    """ typelink() will download a link, and then deturmine it's file type using magic numbers.
+    """
+
+    log( "Attempting to type link: '{0}' (using filesize: {1})".format(link,file_size) )
+
+    req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(file_size)})
+    success = False
+    file_type = ""
+    try:
+
+        # try and download the file five times ( in case the site is being fussy )
+        error_count = 0
+        while(error_count < 5):
+            try:
+                payload = urllib2.urlopen(req,timeout=5).read(file_size)
+                log( "Successfully downloaded the first {0} bytes of '{1}'.".format(fil_esize, link) )
+                break
+            except Exception, e:
+                log( "Error within typelink while trying to download {0} bytes from URL:\n\t{1}\n".format(link,str(e)) )
+                if str(e) != 'time out':
+                    raise Exception(e)
+                else:
+                    error_count += 1
+                    time.sleep(sleep_time)
+        # type file using libmagic
+        file_type = magic.from_buffer(payload, mime=True)
+        success = True
+        
+    except Exception, e:
+        log( "An error has occured in the typelink() function:\n\tURL: {0}\n\tError: {1}".format(link,str(e)) )
+            
+    return success, file_type
+
+def check_match(domain_url, link, allowed_domains):
+    """ check_match() is used to derumine of a link is linking to the parent domain or another domain.
+    """
+    
+    site_match = True
+    url_data = urlparse.urlparse(link)
+
+    log( "check_match(): urlparse results:" )
+    log( url_data )
+
+    if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
+         (len(link) >= 8 and link[0:8].lower() == "https://") or
+         (len(link) >= 3 and link[0:6].lower() == "ftp://") ): 
+        urlA = "{0}://{1}".format(url_data.scheme, url_data.netloc)
+        urlB = "{0}://{1}/".format(url_data.scheme, url_data.netloc)
+        if(urlA != domain_url and urlB != domain_url):
+            if not urlA in allowed_domains and not urlB in allowed_domains:
+                site_match = False
+
+    log( "Comparing domain_url='{0}', netloc='{1}', link='{2}', with sitematch='{3}'.".format(siteurl,urldata.netloc,link,sitematch) )
+
+    return site_match
+
+def sanity_check_url(siteurl, rawhref):
+
+    # there are some websites that have absolute links that go above
+    # the root ... why this is I have no idea, but this is how i'm
+    # solving it
+    links = []
+    uprelparts = rawhref.split('../')
+    if len(uprelparts) == 1:
+        abslink = urljoin(siteurl,rawhref)
+        links.append(abslink)
+    
+    elif len(uprelparts) == 2:
+        abslink = urljoin(siteurl,uprelparts[1])
+        links.append(abslink)
+    
+    elif len(uprelparts) == 3:
+        newhref = "../{0}".format(uprelparts[2])
+
+        abslink = urljoin(siteurl,newhref)
+        links.append(abslink)
+
+        abslink = urljoin(siteurl,uprelparts[2])
+        links.append(abslink)
+    
+    else:
+        abslink = urljoin(siteurl,rawhref)
+        links.append(abslink)
+
+    return links
+
+def get_page_links(domain_url, url, file_size=1024, sleep_time=2):
+    """ getpagelinks() will return a list of all of the link on a html page that is passed.
+    """
+
+    log( "Getting page links for '{0}' ...".format(url) )
+
+    success = False
+    links = []
+    document_length = 0
+    bad_link = False
+    try:
+        type_link_success, file_type = type_link(url, file_size, sleep_time)
+        if success == False:
+            bad_link = True
+            log( "Bad link found. ( {0} )".format(url) )
+            raise Exception( 'Failed to type link.' );
+        
+        if linktype != "text/html":
+            log( "Link is not of type text/html." )
+            raise Exception( 'Link is not of type text/html' )
+            
+        try:
+        
+            try:
+                html = urllib2.urlopen(url)
+            except Exception, e:
+                err_text = "getpagelinks(): urllib2 error: '{0}'".format(str(e))
+                log( err_text )
+                raise Exception( err_text )
+            
+            # record bandwidth used
+            document_length = len(str(html))
+            
+            # process document DOM
+            soup = BeautifulSoup(html)
+            tagtypes = [
+                ('a','href'),
+                ('embed','src'),
+                ('iframe','src'),
+            ]
+            for tagtype,verb in tagtypes:
+                tags = soup.find_all(tagtype)
+                for tag in tags:
+                
+                    if len(tag.contents) >= 1:
+                        linktext = unicode(tag.string).strip()
+                    else:
+                        linktext = ""
+
+                    try:
+                        rawhref = tag[verb]
+                    except:
+                        log( "tag ('{0}') didn't have verb ('{1}'), ignoring.".format(tag,verb) )
+                        continue
+
+                    match = check_match(domain_url, rawhref)
+                    abslink = urljoin(domain_url,rawhref)
+                    links.append((match,abslink,linktext))
+        
+                    abslinks = self.sanity_check_url(domain_url,rawhref)
+                    for l in abslinks:
+                        links.append((match,l,linktext))
+
+        except Exception, e:
+            links = []
+            sucess = False
+            log( "An error occurred in getpagelinks():\n\tURL: {0}\n\tError: {1}".format(url,str(e)) )
+        self.status['linkcount'] += len(links)
+    except:
+        pass
+    
+    log( "Found {0} links from URL: '{1}'.".format(len(links),url) )
+
+    return success, links, document_length, bad_link
+
+
 class Scraper(threading.Thread):
 
     def __init__(self,uid=str(uuid.uuid4()),DEBUG=False):
@@ -321,9 +490,8 @@ class Scraper(threading.Thread):
             self.startedCallback(payload)
 
     def broadcastdoc(self,docurl,linktext):
-        """
-        broadcastdoc() calls the scraper document found async call abck with status and document information within
-        its payload.
+        """ broadcastdoc() calls the scraper document found async call abck with status and document information within
+            its payload.
         """
 
         if self.DEBUG:
@@ -349,188 +517,10 @@ class Scraper(threading.Thread):
         if self.broadcastDocCallback != None:
             self.broadcastDocCallback(payload)
 
-    def typelink(self,link,filesize=1024):
-        """
-        typelink() will download a link, and then deturmine it's file type using magic numbers.
-        """
-        if self.stopped():
-            if self.DEBUG:
-                print 'typelink() saw the stopped flag - exiting scraper.'
-            self.reset()
-            raise Exception('Scraper thread stopped.')
-
-        if self.DEBUG:
-            print "Attempting to type link: '{0}' (using filesize: {1})".format(link,filesize)
-
-        req = urllib2.Request(link, headers={'Range':"byte=0-{0}".format(filesize)})
-        success = True
-        filetype = ""
-        try:
-
-            # this loop is going to try and download the link 5 times.  We do this because 
-            # the site may not be ready (ie. we may be thrashing the hell out of it)
-            errorcount = 0
-            while(errorcount < 5):
-                try:
-                    payload = urllib2.urlopen(req,timeout=5).read(filesize)
-                    if self.DEBUG:
-                        print "Successfully downloaded the first {0} bytes of '{1}'.".format(filesize,link)
-                    break
-                except Exception, e:
-                    if self.DEBUG:
-                        print "Error within typelink while trying to download {0} bytes from URL:\n\t{1}\n".format(link,str(e))
-                    if str(e) != 'time out':
-                        raise Exception(e)
-                    else:
-                        errorcount += 1
-
-                        # I don't like doing this, but it can help success rates.
-                        time.sleep(1)
-
-            # record bandwidth used
-            self.status['bandwidth'] += filesize
-            filetype = magic.from_buffer(payload,mime=True)
-        except Exception, e:
-            success = False;
-            if self.DEBUG:
-                print "An error has occured in the typelink() function:\n\tURL: {0}\n\tError: {1}".format(link,str(e))
-        return success,filetype
-
-    def checkmatch(self,siteurl,link):
-        """
-        checkmatch() is used to derumine of a link is linking to the parent domain or another domain.
-        """
-        sitematch = True
-        urldata = urlparse.urlparse(link)
-
-        if self.DEBUG:
-            print "checkmatch(): urlparse results:"
-            print urldata
-
-        if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
-             (len(link) >= 8 and link[0:8].lower() == "https://") or
-             (len(link) >= 3 and link[0:6].lower() == "ftp://") ): 
-            urlA = "{0}://{1}".format(urldata.scheme, urldata.netloc)
-            urlB = "{0}://{1}/".format(urldata.scheme, urldata.netloc)
-            if(urlA != siteurl and urlB != siteurl):
-                if urlA not in self.status['urldata']['allowdomains'] and urlB not in self.status['urldata']['allowdomains']:
-                    sitematch = False
-
-        if self.DEBUG:
-            print "Comparing siteurl='{0}', netloc='{1}', link='{2}', with sitematch='{3}'.".format(siteurl,urldata.netloc,link,sitematch)
-
-        return sitematch
-
-    def getpagelinks(self,siteurl,url):
-        """
-        getpagelinks() will return a list of all of the link on a html page that is passed.
-        """
-
-        if self.DEBUG:
-            print "Getting page links for '{0}' ...".format(url)
-
-        links = []
-        success,linktype = self.typelink(url)
-        if success == False:
-            self.status['badlinks'].append(url)
-
-            if self.DEBUG:
-                print "Bad link found. ( {0} )".format(url)
-
-            return success,links
-        sucess = True
-        if linktype != "text/html":
-            
-            if self.DEBUG:
-                print "URL is not of type text/html."
-
-            return False,links
-        try:
-            try:
-                html = urllib2.urlopen(url)
-            except Exception, e:
-                if self.DEBUG:
-                    print "getpagelinks(): urllib2 error: '{0}'".format(str(e))
-            
-            # record bandwidth used
-            self.status['bandwidth'] += len(str(html))
-            soup = BeautifulSoup(html)
-            tagtypes = [
-                ('a','href'),
-                ('embed','src'),
-                ('iframe','src'),
-            ]
-            for tagtype,verb in tagtypes:
-                tags = soup.find_all(tagtype)
-                for tag in tags:
-                    if len(tag.contents) >= 1:
-                        linktext = unicode(tag.string).strip()
-                    else:
-                        linktext = ""
-
-                    try:
-                        rawhref = tag[verb]
-                    except:
-                        if self.DEBUG:
-                            print "tag ('{0}') didn't have verb ('{1}'), ignoring.".format(tag,verb)
-                        continue
-
-                    match = self.checkmatch(siteurl,rawhref)
-                    abslink = urljoin(siteurl,rawhref)
-                    links.append((match,abslink,linktext))
-        
-                    abslinks = self.adjusturl(siteurl,rawhref)
-                    for l in abslinks:
-                        links.append((match,l,linktext))
-
-        except Exception, e:
-            links = []
-            sucess = False
-            if self.DEBUG:
-                print "An error occurred in getpagelinks():\n\tURL: {0}\n\tError: {1}".format(url,str(e))
-        self.status['linkcount'] += len(links)
-        
-        if self.DEBUG:
-            if self.DEBUG:
-                print "Found {0} links from URL: '{1}'.".format(len(links),url)
-
-        return success,links
-
-    def adjusturl(self,siteurl,rawhref):
-
-        # there are some websites that have absolute links that go above
-        # the root ... why this is I have no idea, but this is how i'm
-        # solving it
-        links = []
-        uprelparts = rawhref.split('../')
-        if len(uprelparts) == 1:
-            abslink = urljoin(siteurl,rawhref)
-            links.append(abslink)
-        
-        elif len(uprelparts) == 2:
-            abslink = urljoin(siteurl,uprelparts[1])
-            links.append(abslink)
-        
-        elif len(uprelparts) == 3:
-            newhref = "../{0}".format(uprelparts[2])
-
-            abslink = urljoin(siteurl,newhref)
-            links.append(abslink)
-
-            abslink = urljoin(siteurl,uprelparts[2])
-            links.append(abslink)
-        
-        else:
-            abslink = urljoin(siteurl,rawhref)
-            links.append(abslink)
-
-        return links
-
     def followlinks(self,links,level=0):
-        """
-        followlinks() is the heart of the Barking Owl Scraper.  It follows links to a specified link level,
-        reporting if any of those links are documents that it should be identifying.  This function is a
-        recursive function and can run for a very long time if the link level is not defined appropreately.
+        """ followlinks() is the heart of the BarkingOwl Scraper.  It follows links to a specified link level,
+            reporting if any of those links are documents that it should be identifying.  This function is a
+            recursive function and can run for a very long time if the link level is not defined appropreately.
         """
 
         if self.DEBUG:
@@ -542,29 +532,18 @@ class Scraper(threading.Thread):
             pass
         else:
             level += 1
-            if self.DEBUG:
-                print "Working on {0} links ...".format(len(links))
+            log( "Working on {0} links ...".format(len(links)) )
                 #print "Processing Links: {0}".format(links)
 
             # we need to keep track of what links we have visited at each
             # level.  Here we are adding to our array each time a new level
             # is seen
             if len(self.status['processed'])-1 < level:
-                if self.DEBUG:
-                    print "Current Level ({0}) does not exist within processed link list, adding.".format(level)
+                log( "Current Level ({0}) does not exist within processed link list, adding.".format(level) )
                 self.status['processed'].append([])
 
-            for _link in links:
-                link,linktext = _link
-
-                #if self.DEBUG:
-                #    print "Working on '{0}'".format(link)
-
-                # we need to keep track of what links we have visited at each 
-                # level.  Here we are adding to our array each time a new level 
-                # is seen
-                #if len(self.status['processed'])-1 < level:
-                #    self.status['processed'].append([])
+            for link,linktext in links:
+                #link,linktext = _link
 
                 # see if we have already processed the link at max level, and we
                 # are at maxlevel.  If that is the case, it is pointless to do the 
@@ -577,36 +556,31 @@ class Scraper(threading.Thread):
 
                 # get all of the links from the page
                 ignored = 0
-                success,allpagelinks = self.getpagelinks(self.status['urldata']['targeturl'],link)
+                success,all_page_links = self.getpagelinks(self.status['urldata']['targeturl'],link)
                 #if self.DEBUG:
-                #    print "Page '{0}' has {1} links on it.".format(link,len(allpagelinks))
+                #    print "Page '{0}' has {1} links on it.".format(link,len(all_page_links))
 
                 if success == False:
-                    if self.DEBUG:
-                        print "Unable to get page links from link, skipping. ({0})".format(link)
+                    log( "Unable to get page links from link, skipping. ({0})".format(link) )
                     continue
 
                 # sanitize the url link, and save it to our list of processed links
+                log( "Adding '{0}' to the processed list.".format(_l) )
                 _l = urljoin(self.status['urldata']['targeturl'],link)
-                if self.DEBUG:
-                    print "Adding '{0}' to the processed list.".format(_l)
                 self.status['processed'][level-1].append(_l)
 
                 # Look at the links found on the page, and add those that are within
                 # the allowed domains to pagelinks to process
                 pagelinks = []
-                for pagelink in allpagelinks:
-                    match,link,linktext = pagelink
+                for match,link,linktext in all_page_links:
+                    # match,link,linktext = pagelink
                     if( match == True ):
                         pagelinks.append((link,linktext))
-
-                #if self.DEBUG:
-                #    print "Number of Page Links: {0}.".format(len(pagelinks))
-
+                        
                 # Some of the links that were returned from this page might be docs we are 
                 # interested in if they are, add them to the list of pdfs to be returned 'retlinks'
-                for _thelink in pagelinks:
-                    thelink,linktext = _thelink
+                for thelink,linktext in pagelinks:
+                    #thelink,linktext = _thelink
                     if not any(thelink in r for r in retlinks) and not any(thelink in r for r in self.status['processed']):
                         success,linktype = self.typelink(thelink)
                         if success == True:
@@ -626,12 +600,10 @@ class Scraper(threading.Thread):
                                 #broadcast the doc to the bus!
                                 self.broadcastdoc(thelink,linktext)
                         else:
-                            if self.DEBUG:
-                                print "WARNING: Link unsuccessfully typed! ({0})".format(thelink)
+                            log( "WARNING: Link unsuccessfully typed! ({0})".format(thelink) )
                             ignored += 1
                     else:
-                        if self.DEBUG:
-                            print "Link already processed, skipping. ({0})".format(thelink)
+                        log( "Link already processed, skipping. ({0})".format(thelink) )
 
                 # Follow all of the valid links on the page, and find all of the docs.
                 gotlinks = self.followlinks(links=pagelinks,level=level)
@@ -641,27 +613,7 @@ class Scraper(threading.Thread):
                     if (l,t) not in retlinks:
                         retlinks.append((l,t))
 
-                # go through all of the returned links and see if any of them are docs
-                #for _gotlink in gotlinks:
-                #    gotlink,linktext = _gotlink
-                #    if not any(gotlink in r for r in retlinks) and not any(gotlink in r for r in self.status['processed']):
-                #       success,linktype = self.typelink(gotlink)
-                #       if success == True:
-                #
-                #           if gotlink not in self.status['processed'][level-1]:
-                #               self.status['processed'][level-1].append(gotlink)
-                #
-                #           if linktype == self.status['urldata']['doctype']:
-                #               retlinks.append((gotlink,linktext))
-                #               
-                #               #broadcast the doc to the bus!
-                #               self.broadcastdoc(gotlink,linktext)
-                #       else:
-                #           ignored += 1
-                # 
-
-                if self.DEBUG:
-                    print "Done processing url: '{0}'".format(link)
+                log( "Done processing url: '{0}'".format(link) )
 
             level -= 1
 

@@ -11,7 +11,7 @@ TXT, HTML, etc.
 
 setup(
     name="BarkingOwl",
-    version="0.1.0",
+    version="0.2.0",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",
@@ -25,7 +25,7 @@ setup(
       "beautifulsoup4==4.3.2",
       "libmagic==1.0",
       "pika==0.9.13",
-      "python-dateutil==2.2",
+      #"python-dateutil==2.2",
       "python-magic==0.4.6",
       "six==1.5.2",
       "wsgiref==0.1.2",

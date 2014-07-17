@@ -213,8 +213,8 @@ class Scraper(): #threading.Thread):
         self.status['busy'] = False
         self.status['processed_links'] = []
         self.status['bad_links'] = []
-        self.status['linkcount'] = 0
-        self.status['level'] = -1
+        self.status['link_count'] = 0
+        #self.status['level'] = -1
         self.status['url_data'] = {}
         self.status['bandwidth'] = 0
         self.status['ignored_count'] = 0
@@ -275,10 +275,10 @@ class Scraper(): #threading.Thread):
                 'title': title, # a title for the URL
                 'description': descritpion, # a description of the url
                 'max_link_level': max_link_level, # the max link level for the scraper to follow to
-                'creationdatetime': creationdatetime, # ISO creation date and time
-                'doctype': doctype, # the text for the magic lib to look for (ex. 'application/pdf')
+                'creation_datetime': creationdatetime, # ISO creation date and time
+                'doc_type': doctype, # the text for the magic lib to look for (ex. 'application/pdf')
                 'frequency': frequency, # the frequency in minutes the URL should be scraped
-                'allowdomains': [], # a list of allowable domains for the scraper to follow
+                'allowed_domains': [], # a list of allowable domains for the scraper to follow
             }
     
         If the above fields are not included, then the scraper will not work as expected, but may not throw an error.
@@ -343,8 +343,8 @@ class Scraper(): #threading.Thread):
         # reset globals
         self.status['processed_links'] = []
         self.status['bad_links'] = []
-        self.status['linkcount'] = 0
-        self.status['level'] = -1
+        self.status['link_count'] = 0
+        #self.status['level'] = -1
         self.status['bandwidth'] = 0
         self.status['busy'] = False
         self.status['url_data'] = {}
@@ -363,7 +363,7 @@ class Scraper(): #threading.Thread):
         packet = {
             'processed_links': self.status['processed_links'],
             'bad_links': self.status['bad_links'],
-            'linkcount': self.status['linkcount'],
+            'link_count': self.status['link_count'],
             'ignored_count': self.status['ignored_count'],
             'url_data': self.status['url_data'],
             'bandwidth': self.status['bandwidth'],
@@ -444,12 +444,14 @@ class Scraper(): #threading.Thread):
         links.append( (self.status['url_data']['target_url'],'<root>') )
         
         max_level = self.status['url_data']['max_link_level']
-        for i in range(0,max_level):
+        for i in range(0,max_level+1):
             self.status['processed_links'].append([])
         
         docs = self.follow_links(links, level=max_level+1)
 
         self.broadcast_finished()
+
+        self.status['busy'] = False
 
         log( "Scraping complete!" )
 
@@ -480,11 +482,12 @@ class Scraper(): #threading.Thread):
  
             #log( "len(processed_links) = {0}".format(len(self.status['processed_links']) ))
 
-            if len(self.status['processed_links'])-1 < level:
-                #log( "Current Level ({0}) does not exist within processed_links link list, adding.".format(level) )
-                self.status['processed_links'].append([])
+            #if len(self.status['processed_links'])-1 < level:
+            #    #log( "Current Level ({0}) does not exist within processed_links link list, adding.".format(level) )
+            #    self.status['processed_links'].append([])
 
             for current_link, link_text in links:
+
                 #link,link_text = _link
 
                 if current_link in self.status['bad_links']:
@@ -508,8 +511,8 @@ class Scraper(): #threading.Thread):
                 
                 exists = False
                 if level != 1:
-                    for i in range(0,level-1):
-                        if current_link in self.status['processed_links'][level-1-i]:
+                    for i in range(0,level):
+                        if current_link in self.status['processed_links'][i]:
                             #log( '{0} already processed at level {1} (current level: {2})'.format(current_link, level-1-i, level) )
                             exists = True
                             break
@@ -520,6 +523,9 @@ class Scraper(): #threading.Thread):
                     self.status['ignored_count']+=1
                     continue
 
+
+                # record that we have looked at the link
+                self.status['link_count'] += 1
 
                 # get all of the links from the page
                 ignored = 0
@@ -567,6 +573,10 @@ class Scraper(): #threading.Thread):
                 for the_link, link_text in page_links:
                     #the_link,link_text = _the_link
                     if not any(the_link in r for r in ret_links) and not any(the_link in r for r in self.status['processed_links']):
+                        
+                        # record that we have looked at the link
+                        self.status['link_count'] += 1
+
                         success, link_type = type_link(the_link, file_size = self.type_file_size)
                         self.status['bandwidth'] += self.type_file_size
                         if success:

@@ -131,13 +131,13 @@ def test_find_docs():
 
     declare_test_end( passed )
 
-def test_find_docs_external():
+def test_find_docs(url):
 
     declare_test_start( 'follow_link' )
 
     url_data = {
         'url_id': 1,
-        'target_url': 'http://www.scottsvilleny.org/',
+        'target_url': url, # 'http://www.scottsvilleny.org/',
         'max_link_level': 5,
         'creation_date_time': str(datetime.datetime.now()),
         'doc_type': 'application/pdf',
@@ -149,12 +149,13 @@ def test_find_docs_external():
     scraper = Scraper(uid)
     scraper.set_url_data(url_data)
     docs = scraper.find_docs( )
-
+    status = scraper.status
     #print '[ TEST ] {0}'.format(json.dumps(scraper.status))
     #print '[ TEST ] {0}'.format(json.dumps(docs))
 
+
     with open('find_docs_external_results.json','w') as f:
-        f.write(json.dumps(scraper.status))
+        f.write(json.dumps(status))
 
     with open('find_docs_external_all_docs.json', 'w') as f:
         f.write(json.dumps(docs))
@@ -164,6 +165,8 @@ def test_find_docs_external():
         passed = True
 
     declare_test_end( passed )
+
+    return docs, status
 
 if __name__ == '__main__':
 
@@ -179,14 +182,14 @@ if __name__ == '__main__':
     test_get_page_links()
 
     # find_docs()
-    docs = test_find_docs()
+    #docs = test_find_docs()
 
     # find_docs()
-    #start_time = time.time()
-    #docs = test_find_docs_external()
-    #total_time = time.time() - start_time
-    #print "External scraping took {0} seconds.".format(total_time)
+    #url = "http://www.scottsvilleny.org/"
+    url = "http://timduffy.me/"
+    start_time = time.time()
+    docs,status = test_find_docs( url )
+    total_time = time.time() - start_time
+    print "\nScraper found {0} documents, processed {1} links, and took {2} seconds.".format(len(docs), status['link_count'], total_time)
 
-    # get scraper status
-    #text_get_status()
 

@@ -46,17 +46,18 @@ def test_followlinks(scraper):
     links = []
     #links.append(('http://timduffy.me/blog.html','TimDuffy.me Blog'))
     links.append(('http://timduffy.me/','TimDuffy.me'))
+    #links.append(('http://www.scottsvilleny.org/','Scottsville, NY'))
     isodatetime = strftime("%Y-%m-%d %H:%M:%S")
     urldata = {
         'urlid': 1,
         'targeturl': 'http://timduffy.me/',
-        'maxlinklevel': 5,
+        #'targeturl': 'http://www.scottsvilleny.org/',
+        'maxlinklevel': 3,
         'creationdatetime': '2013-11-18 21:09:30',
         #'doctypetitle': 'HTML Document',
         #'docdescription': 'HTML Document',
         #'doctype': 'text/html',
         'doctype': 'application/pdf',
-                    
         'disparchdatetime': isodatetime,
         'allowdomains': [],
     }

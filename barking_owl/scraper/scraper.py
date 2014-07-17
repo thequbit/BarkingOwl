@@ -32,6 +32,7 @@ class Scraper(threading.Thread):
         self.status['level'] = -1
         self.status['urldata'] = {}
         self.status['bandwidth'] = 0
+        self.status['ignoredcount'] = 0
 
         self.DEBUG = DEBUG
 
@@ -184,25 +185,27 @@ class Scraper(threading.Thread):
                 print "[{0}] Exiting.".format(self.uid)
             self.stop()
 
-            isodatetime = strftime("%Y-%m-%d %H:%M:%S")
-            packet = {
-                'processed': self.status['processed'],
-                'badlinks': self.status['badlinks'],
-                'linkcount': self.status['linkcount'],
-                'urldata': self.status['urldata'],
-                'bandwidth': self.status['bandwidth'],
-                'startdatetime': str(isodatetime)
-            }
-            payload = {
-                'command': 'scraper_finished',
-                'sourceid': self.uid,
-                'destinationid': 'broadcast',
-                'message': packet
-            }
+            if self.DEBUG:
+                isodatetime = strftime("%Y-%m-%d %H:%M:%S")
+                packet = {
+                    'processed': self.status['processed'],
+                    'badlinks': self.status['badlinks'],
+                    'linkcount': self.status['linkcount'],
+                    'ignoredcount': self.status['ignoredcount'],
+                    'urldata': self.status['urldata'],
+                    'bandwidth': self.status['bandwidth'],
+                    'startdatetime': str(isodatetime)
+                }
+                payload = {
+                    'command': 'scraper_finished',
+                    'sourceid': self.uid,
+                    'destinationid': 'broadcast',
+                    'message': packet
+                }
 
-            #with open('finishedpayload.json','w') as f:
-            #    f.write(json.dumps(payload))
-            #    f.flush()
+                with open('finishedpayload.json','w') as f:
+                    f.write(json.dumps(payload))
+                    f.flush()
              
 
             raise Exception("Scraper Stopped - Scraper Exiting.")
@@ -231,6 +234,7 @@ class Scraper(threading.Thread):
         self.status['bandwidth'] = 0
         self.status['busy'] = False
         self.status['urldata'] = {}
+        self.status['ignoredcount'] = 0
 
         if self.DEBUG:
             print "Scraper data reset successfully."
@@ -251,6 +255,7 @@ class Scraper(threading.Thread):
         self.status['linkcount'] = 0
         self.status['level'] = -1
         self.status['bandwidth'] = 0
+        self.status['ignoredcount'] = 0
 
         if self.DEBUG:
             print "Starting Scraper on '{0}' ...".format(self.status['urldata']['targeturl'])
@@ -278,6 +283,7 @@ class Scraper(threading.Thread):
             'processed': self.status['processed'],
             'badlinks': self.status['badlinks'],
             'linkcount': self.status['linkcount'],
+            'ignoredcount': self.status['ignoredcount'],
             'urldata': self.status['urldata'],
             'bandwidth': self.status['bandwidth'],
             'startdatetime': str(isodatetime)
@@ -454,12 +460,17 @@ class Scraper(threading.Thread):
             
             # record bandwidth used
             self.status['bandwidth'] += len(str(html))
+
+            if self.DEBUG:
+                print "Added {0} Bytes to total bandwidth value.".format(len(str(html)))
+
             soup = BeautifulSoup(html)
             tagtypes = [
                 ('a','href'),
                 ('embed','src'),
                 ('iframe','src'),
             ]
+
             for tagtype,verb in tagtypes:
                 tags = soup.find_all(tagtype)
                 for tag in tags:
@@ -570,10 +581,21 @@ class Scraper(threading.Thread):
                 # are at maxlevel.  If that is the case, it is pointless to do the 
                 # bottom of the tree over and over again.  Also don't do anything 
                 # if it is 404/bad link
-                if (link in self.status['processed'][level-1]) or link in self.status['badlinks']:
+                
+                #if (link in self.status['processed'][level-1]) or link in self.status['badlinks']:
+                l = level
+                exists = False
+                while(l != -1):
+                    if link in self.status['processed'][l-1]:
+                        exists = True
+                        break
+                    l=l-1
+
+                #if any(link in r for r in self.status['processed']) or link in self.status['badlinks']:
+                if exists or link in self.status['badlinks']:
                     if self.DEBUG:
                         print "Link already processed, skipping. ({0})".format(link)
-                    continue
+                    self.status['ignoredcount']+=1
 
                 # get all of the links from the page
                 ignored = 0
@@ -617,6 +639,8 @@ class Scraper(threading.Thread):
                             # add the link to the list of processed links
                             if thelink not in self.status['processed'][level-1]:
                                 self.status['processed'][level-1].append(thelink)
+                            else:
+                                self.status['ignoredcount']+=1
 
                             # if the link is of the type we are looking for, add it to the 
                             # list of docs to return

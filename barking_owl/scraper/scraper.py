@@ -210,13 +210,14 @@ class Scraper(): #threading.Thread):
         # start a timer to see if we should be exiting
         #threading.Timer(self.interval,self._checkshutdown).start()
 
-        self.finishedCallback = None
-        self.startedCallBack = None
-        self.broadcastDocCallback = None
+        self.finished_callback = None
+        self.started_callback = None
+        self.broadcast_document_found_callback = None
 
         log( "Scraper INIT successful." )
 
-    def setCallbacks(self,finishedCallback=None,startedCallback=None,broadcastDocCallback=None):
+    def setCallbacks(self, finished_callback=None,
+            started_callback=None, broadcast_document_found_callback=None):
         """
         setCallbacks() sets the async call backs that should be called when an event happens.  There are three
         different events that are called:
@@ -226,27 +227,27 @@ class Scraper(): #threading.Thread):
             Document Found - The scraper has found a document
 
         """
-        self.finishedCallback = finishedCallback
-        self.startedCallback = startedCallback
-        self.broadcastDocCallback = broadcastDocCallback 
+        self.finished_callback = finished_callback
+        self.started_callback = started_callback
+        self.broadcast_document_callback = broadcast_document_found_callback 
 
-    def setFinishedCallback(self,callback):
+    def setFinishedCallback(self, finished_callback):
         """
         setFinishedCallback() defineds the function that should be called when the finished state occures.
         """
-        self.finishedCallback = callback
+        self.finished_callback = finished_callback
 
-    def setStartedCallback(self,callback):
+    def setStartedCallback(self, started_callback):
         """
         setStartedCallback() defineds the function that should be called when the started state occures.
         """
-        self.startedCallback = callback
+        self.started_allback = started_callback
 
-    def setBroadcastDocCallback(self,callback):
+    def setBroadcast_document_callback(self, broadcast_document_found_callback):
         """
         setBroadcastDocCallback() defineds the function that should be called when the broadcast doc state occures.
         """
-        self.broadcastDocCallback = callback
+        self.broadcast_document_found_callback = broadcast_document_found_callback
 
     def set_url_data(self,url_data):
         """
@@ -318,52 +319,6 @@ class Scraper(): #threading.Thread):
         # set the url data local
         self.status['url_data'] = url_data
 
-    def _checkshutdown(self):
- 
-        #
-        # See if we need to stop ourselves
-        #
-        if self.stopped():
-            if self.DEBUG:
-                print "[{0}] Exiting.".format(self.uid)
-            self.stop()
-
-            if self.DEBUG:
-                isodatetime = strftime("%Y-%m-%d %H:%M:%S")
-                packet = {
-                    'processed': self.status['processed'],
-                    'bad_links': self.status['bad_links'],
-                    'linkcount': self.status['linkcount'],
-                    'ignored_count': self.status['ignored_count'],
-                    'url_data': self.status['url_data'],
-                    'bandwidth': self.status['bandwidth'],
-                    'startdatetime': str(isodatetime)
-                }
-                payload = {
-                    'command': 'scraper_finished',
-                    'sourceid': self.uid,
-                    'destinationid': 'broadcast',
-                    'message': packet
-                }
-
-                with open('finishedpayload.json','w') as f:
-                    f.write(json.dumps(payload))
-                    f.flush()
-             
-
-            raise Exception("Scraper Stopped - Scraper Exiting.")
-        else:
-            threading.Timer(self.interval, self._checkshutdown).start()
-
-    def run(self):
-        """
-        run() this is the threading subsystem entry point that is called when Scraper.start() is called. 
-        This function starts the scraper.
-        """
-        if self.DEBUG:
-            print "Starting Scraper ..."
-        self.started = True
-
     def reset(self):
         """
         reset() resets the state of the scraper.  This should not be called unless the scraper is stopped.
@@ -381,43 +336,13 @@ class Scraper(): #threading.Thread):
 
         log( "Scraper data reset successfully." )
 
-    def begin(self):
-        """
-        begin() should be used as the entry point of the scraper once it has been configured using seturl_data().
-        This funciton resets the state of the scraper, and then begins traversing the target url based on the 
-        rulls passed along with it.
-        """
-
-        self.broadcaststart()
-        self.status['busy'] = True
-
-        # reset globals
-        self.status['processed'] = []
-        self.status['bad_links'] = []
-        self.status['linkcount'] = 0
-        self.status['level'] = -1
-        self.status['bandwidth'] = 0
-        self.status['ignored_count'] = 0
-
-        log( "Starting Scraper on '{0}' ...".format(self.status['url_data']['target_url']) )
-
-        links = []
-        links.append((self.status['url_data']['target_url'],'<root>'))
-        try:
-            # begin following links (note: blocking)
-            self.followlinks(links=links,
-                             level=0)
-            self.broadcastfinish()
-        except Exception, e:
-            log( "Error: {0}, {1}".format(str(e),sys.exc_info()[0]) )
-            raise Exception('Scraper Error - Scraper Exiting.')
-        
-        self.status['busy'] = False
-        
-    def broadcastfinish(self):
+    def broadcast_finished(self):
         """
         broadcastfinish() calls the async scraper finished call back with status information within its payload.
         """
+        
+        log( "Scraper Finished." )
+
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'processed': self.status['processed'],
@@ -437,15 +362,17 @@ class Scraper(): #threading.Thread):
 
         log( "Calling 'finished' callback function ..." )
 
-        if self.finishedCallback != None:
-            self.finishedCallback(payload)
+        if self.finished_callback != None:
+            self.finished_callback(payload)
 
 
-    def broadcaststart(self):
+    def broadcast_start(self):
         """
         broadcaststart() calls the scraper start async call back with status information within its payload.
         """
+        
         log( "Scraper Starting." )
+        
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
             'url_data': self.status['url_data'],
@@ -460,19 +387,19 @@ class Scraper(): #threading.Thread):
 
         log( "Calling 'starting' callback function ..." )
 
-        if self.startedCallback != None:
-            self.startedCallback(payload)
+        if self.started_callback != None:
+            self.started_callback(payload)
 
-    def broadcastdoc(self,docurl,link_text):
+    def broadcast_document(self,doc_url,link_text):
         """ broadcastdoc() calls the scraper document found async call abck with status and document information within
             its payload.
         """
 
-        log( "Doc Found: '{0}'.".format(docurl) )
+        log( "Doc Found: '{0}'.".format(doc_url) )
 
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
-            'docurl': docurl,
+            'docurl': doc_url,
             'link_text': link_text,
             'url_data': self.status['url_data'],
             'scrapedatetime': str(isodatetime)
@@ -486,11 +413,21 @@ class Scraper(): #threading.Thread):
 
         log( "Calling 'found document' callback function ..." )
 
-        if self.broadcastDocCallback != None:
+        if self.broadcast_document_found_callback != None:
             self.broadcastDocCallback(payload)
 
     def find_docs(self, links):
+
+        self.status['busy'] = True
+        
+        self.broadcast_start()
+
+        links = []
+        links.append( (self.status['url_data']['target_url'],'<root>') )
         docs = self.follow_links(links)
+
+        self.broadcast_finished()
+
         return docs
 
     def follow_links(self, links, level=0):
@@ -592,7 +529,7 @@ class Scraper(): #threading.Thread):
                                 ret_links.append((the_link,link_text))
                                
                                 #broadcast the doc to the bus!
-                                self.broadcastdoc(the_link,link_text)
+                                self.broadcast_document(the_link,link_text)
                         else:
                             log( "WARNING: Link unsuccessfully typed! ({0})".format(the_link) )
                             ignored += 1

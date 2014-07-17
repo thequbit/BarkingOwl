@@ -8,7 +8,8 @@ if __name__ == '__main__':
 
     print "Starting BarkingOwl-Scraper."
 
-    try:
+    #try:
+    if True:
         StartScraper()
-    except:
-        print "Exiting BarkingOwl-Scraper."
+    #except:
+    #    print "Exiting BarkingOwl-Scraper."

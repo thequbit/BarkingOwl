@@ -367,12 +367,12 @@ class Scraper(): #threading.Thread):
             'ignored_count': self.status['ignored_count'],
             'url_data': self.status['url_data'],
             'bandwidth': self.status['bandwidth'],
-            'startdatetime': str(isodatetime)
+            'start_datetime': str(isodatetime)
         }
         payload = {
             'command': 'scraper_finished',
-            'sourceid': self.uid,
-            'destinationid': 'broadcast',
+            'source_id': self.uid,
+            'destination_id': 'broadcast',
             'message': packet
         }
 
@@ -396,8 +396,8 @@ class Scraper(): #threading.Thread):
         }
         payload = {
             'command': 'scraper_start',
-            'sourceid': self.uid,
-            'destinationid': 'broadcast',
+            'source_id': self.uid,
+            'destination_id': 'broadcast',
             'message': packet
         }
 
@@ -430,7 +430,7 @@ class Scraper(): #threading.Thread):
         log( "Calling 'found document' callback function ..." )
 
         if self.broadcast_document_found_callback != None:
-            self.broadcastDocCallback(payload)
+            self.broadcast_document_found_callback(payload)
 
     def find_docs(self):
 

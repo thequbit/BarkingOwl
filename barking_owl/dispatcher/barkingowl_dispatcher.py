@@ -91,14 +91,14 @@ class Dispatcher():
         seturls() expects an array of dictionaries that hold url data.  The format should
         be the following:
         
-            url = {'targeturl': targeturl, # the root url to be scraped
+            url = {'target_url': target_url, # the root url to be scraped
                    'title': title, # a title for the URL
                    'description': descritpion, # a description of the url
-                   'maxlinklevel': maxlinklevel, # the max link level for the scraper to follow to
-                   'creationdatetime': creationdatetime, # ISO creation date and time
-                   'doctype': doctype, # the text for the magic lib to look for (ex. 'application/pdf')
+                   'max_link_level': max_link_level, # the max link level for the scraper to follow to
+                   'creation_datetime': creation_datetime, # ISO creation date and time
+                   'doc_type': doc_type, # the text for the magic lib to look for (ex. 'application/pdf')
                    'frequency': frequency, # the frequency in minutes the URL should be scraped
-                   'allowdomains': [], # a list of allowable domains for the scraper to follow
+                   'allowed_domains': [], # a list of allowable domains for the scraper to follow
                   }
         
         note: every time this function is called, the url list is reset, including the last
@@ -107,8 +107,8 @@ class Dispatcher():
 
         # setup urls for future data
         for i in range(0,len(urls)):
-            urls[i]['startdatetime'] = ""
-            urls[i]['finishdatetime'] = ""
+            urls[i]['start_datetime'] = ""
+            urls[i]['finish_datetime'] = ""
             urls[i]['runs'] = []
 
         self.urls = urls
@@ -126,7 +126,7 @@ class Dispatcher():
             # check to see if it ever ran
             if self.urls[i]['startdatetime'] == "":
                 if self.DEBUG:
-                    print "URL has not run yet: '{0}'".format(self.urls[i]['targeturl'])
+                    print "URL has not run yet: '{0}'".format(self.urls[i]['target_url'])
                 urlindex = i
                 break
             else:
@@ -194,7 +194,7 @@ class Dispatcher():
     #    jbody = simplejson.dumps(payload)
     #    self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
 
-    def sendurl(self,urlindex,destinationid):
+    def sendurl(self,urlindex,destination_id):
         """
         sendurl() dispatches a URL to a waiting scraper.  It takes in the urlindex which points to a
         url within the self.urls list, as well as a destination ID of the scraper to dispatch the
@@ -226,8 +226,8 @@ class Dispatcher():
         #print "\n{0}\n".format(packet)
         payload = {
             'command': 'url_dispatch',
-            'sourceid': self.uid,
-            'destinationid': destinationid,
+            'source_id': self.uid,
+            'destination_id': destination_id,
             'message': packet
         }
         jbody = json.dumps(payload)
@@ -246,6 +246,10 @@ class Dispatcher():
 
         return remaining
 
+    def stop(self):
+        self.reqchan.stop_consuming()
+        
+
     # message handler
     def _reqcallback(self,ch,method,properties,body):
         response = json.loads(body)
@@ -254,17 +258,17 @@ class Dispatcher():
             if self.DEBUG:
                 print "Seen Scraper Finished Command."
             for i in range(0,len(self.urls)):
-                targeturl = response['message']['urldata']['targeturl']
-                sourceid = response['sourceid']
+                targeturl = response['message']['url_data']['target_url']
+                sourceid = response['source_id']
                 if self.DEBUG:
                     print self.urls[i]
                     print "Comparing targeturl: {0} to {1}, sourceid: {2} to {3}".format(targeturl,
-                                                                                         self.urls[i]['targeturl'],
+                                                                                         self.urls[i]['target_url'],
                                                                                          sourceid,
-                                                                                         self.urls[i]['scraperid']
+                                                                                         self.urls[i]['scraper_id']
                     )
                 now = str(strftime("%Y-%m-%d %H:%M:%S"))
-                if self.urls[i]['targeturl'] == targeturl and self.urls[i]['scraperid'] == sourceid:
+                if self.urls[i]['target_url'] == targeturl and self.urls[i]['scraper_id'] == sourceid:
                     self.urls[i]['finishdatetime'] = now
                     if self.DEBUG:
                         print "Scraper Announced URL Finish."
@@ -293,14 +297,14 @@ class Dispatcher():
                         print "URL Found for Dispatch, urlindex: {0}".format(urlindex)
 
             if not urlindex == -1:
-                self.urls[urlindex]['startdatetime'] = str(strftime("%Y-%m-%d %H:%M:%S"))
-                self.urls[urlindex]['scraperid'] = response['sourceid']
+                self.urls[urlindex]['start_datetime'] = str(strftime("%Y-%m-%d %H:%M:%S"))
+                self.urls[urlindex]['scraper_id'] = response['source_id']
                 self.urls[urlindex]['status'] = 'running'
 
                 if self.DEBUG:
                     print "URL request seen, sending next URL."
 
-                self.sendurl(urlindex,response['sourceid'])
+                self.sendurl(urlindex,response['source_id'])
             else:
                 if self.DEBUG:
                     print "URL request seen, no URLs to send."
@@ -318,7 +322,8 @@ class Dispatcher():
         if response['command'] == 'global_shutdown':
             if self.DEBUG:
                 print "global_shutdown command seen, exiting."
-            raise Exception("Dispatcher Exiting.")
+            #raise Exception("Dispatcher Exiting.")
+            self.stop()
 
 if __name__ == '__main__':
 
@@ -326,14 +331,14 @@ if __name__ == '__main__':
 
     dispatcher = Dispatcher(address='localhost',exchange='barkingowl',selfdispatch=False,DEBUG=True)
     
-    url = {'targeturl': "http://timduffy.me/",
+    url = {'target_url': "http://timduffy.me/",
            'title': "TimDuffy.Me",
            'description': "Tim Duffy's Personal Website",
-           'maxlinklevel': 3,
-           'creationdatetime': str(strftime("%Y-%m-%d %H:%M:%S")),
-           'doctype': 'application/pdf',
+           'max_link_level': 3,
+           'creation_datetime': str(strftime("%Y-%m-%d %H:%M:%S")),
+           'doc_type': 'application/pdf',
            'frequency': 2,
-           'allowdomains': [],
+           'allowed_domains': [],
           }
     
     #url = {
@@ -352,10 +357,10 @@ if __name__ == '__main__':
 
     dispatcher.seturls(urls)
 
-    #if True:
-    try:
+    if True:
+    #try:
         dispatcher.start()
-    except:
-        pass
+    #except:
+    #    pass
 
     print "BarkingOwl Dispatcher Exiting."

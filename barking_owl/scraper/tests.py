@@ -8,7 +8,7 @@ from scraper import (
 from scraper import Scraper
 
 import uuid
-from time import strftime
+import time
 import pprint
 import json
 import datetime
@@ -107,12 +107,10 @@ def test_find_docs():
 
     declare_test_start( 'follow_link' ) 
 
-    links = []
-    links.append(('http://timduffy.me/','TimDuffy.me'))
     url_data = {
         'url_id': 1,
         'target_url': 'http://timduffy.me/',
-        'maxlink_level': 3,
+        'max_link_level': 6,
         'creation_date_time': str(datetime.datetime.now()),
         'doc_type': 'application/pdf',
         'dispatch_datetime': str(datetime.datetime.now()),
@@ -122,7 +120,35 @@ def test_find_docs():
     uid = str(uuid.uuid4())
     scraper = Scraper(uid)
     scraper.set_url_data(url_data)
-    docs = scraper.find_docs( links )
+    docs = scraper.find_docs( )
+
+    print '[ TEST ] {0}'.format(json.dumps(scraper.status))
+    print '[ TEST ] {0}'.format(json.dumps(docs))
+
+    passed = False
+    if len(docs) > 0:
+        passed = True
+
+    declare_test_end( passed )
+
+def test_find_docs_external():
+
+    declare_test_start( 'follow_link' )
+
+    url_data = {
+        'url_id': 1,
+        'target_url': 'http://www.scottsvilleny.org/',
+        'max_link_level': 2,
+        'creation_date_time': str(datetime.datetime.now()),
+        'doc_type': 'application/pdf',
+        'dispatch_datetime': str(datetime.datetime.now()),
+        'allowed_domains': [],
+    }
+
+    uid = str(uuid.uuid4())
+    scraper = Scraper(uid)
+    scraper.set_url_data(url_data)
+    docs = scraper.find_docs( )
 
     print '[ TEST ] {0}'.format(json.dumps(scraper.status))
     print '[ TEST ] {0}'.format(json.dumps(docs))
@@ -143,11 +169,18 @@ if __name__ == '__main__':
     # checkmatch()
     test_check_match()
 
-    # getpagelinks
+    # ge_tpage_links()
     test_get_page_links()
 
-    # folowlinks()
+    # find_docs()
     docs = test_find_docs()
+
+    # find_docs()
+    #start_time = time.time()
+    #docs = test_find_docs_external()
+    #total_time = time.time() - start_time
+
+    #print "External scraping took {0} seconds.".format(total_time)
 
     # get scraper status
     #text_get_status()

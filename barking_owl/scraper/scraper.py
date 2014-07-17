@@ -418,12 +418,12 @@ class Scraper(): #threading.Thread):
             'docurl': doc_url,
             'link_text': link_text,
             'url_data': self.status['url_data'],
-            'scrapedatetime': str(isodatetime)
+            'scrape_datetime': str(isodatetime)
         }
         payload = {
             'command': 'found_doc',
-            'sourceid': self.uid,
-            'destinationid': 'broadcast',
+            'source_id': self.uid,
+            'destination_id': 'broadcast',
             'message': packet
         }
 

@@ -11,83 +11,129 @@ import uuid
 from time import strftime
 import pprint
 import json
+import datetime
 
-def test_type_link(scraper):
-    print "\nTesting type_link() ..."
-    success, filetype = type_link('http://timduffy.me/')
-    print "\tFiletype = '{0}'".format(filetype)
-    if success:
-        print "Passed!"
+def declare_test_start(test_name):
+    print "\n------------------"
+    print "--"
+    print "-- Testing {0} ...".format(test_name)
+    print "--"
+    print "------------------\n"
+
+def declare_test_end(passed):
+    print "\n-- TEST COMPLETE --\n"
+    print "Result:"
+    if passed:
+        print "\tPassed!\n"
     else:
-        print "Failed!"
-    print "--------------------"
+        print "\tFailed!\n"
 
-def test_checkmatch(scraper):
-    siteurl = "http://timduffy.me/"
-    linkA = "http://timduffy.me/blog.html"
-    linkB = "http://google.com/index.html"
-    print "\nTesting checkmatch() ..."
-    sitematchA = scraper.checkmatch(siteurl,linkA)
-    sitematchB = scraper.checkmatch(siteurl,linkB)
-    print "\tLinkA = '{0}'(expeect True), LinkB = '{1}'(expect False)".format(sitematchA,sitematchB)
-    if sitematchA and not sitematchB:
-        print "Passed!"
-    else:
-        print "Failed!"
-    print "--------------------"
 
-def test_getpagelinks(scraper):
-    siteurl = "http://timduffy.me/"
-    url = "http://timduffy.me/"
-    print "\nTesting getpagelinks() ..."
-    success,pagelinks = scraper.getpagelinks(siteurl,url)
+#############################################
+#
+# Tests 
+#
+
+def test_type_link():
+
+    declare_test_start( 'type_link()' )
+
+    success, file_type = type_link('http://timduffy.me/')
+   
+    print "[ TEST ] file type = '{0}'".format(file_type)
+
+    passed = False
+    if success and file_type == 'text/html':
+        passed = True
+
+    declare_test_end( passed )   
+ 
+
+def test_check_match():
+
+    declare_test_start( 'check_match()' )
+
+    passed = True
+
+    site_url = "http://timduffy.me/"
     
-    if success:
-        print "\tLink Count: {0}".format(len(pagelinks))
-        print "Passed!"
-    else:
-        print "Failed!"
+    link_a = "http://timduffy.me/blog.html"
+    link_b = "http://google.com/index.html"
+    
+    allowed_domains = []
 
-    print "--------------------"
+    site_match_a = check_match(site_url, link_a, allowed_domains)
+    site_match_b = check_match(site_url, link_b, allowed_domains)
+    
+    print "[ TEST ] LinkA = '{0}'(expeect True), LinkB = '{1}'(expect False)".format(site_match_a,site_match_b)
+    
+    if not (site_match_a and not site_match_b):
+        passed = False
 
-def test_followlinks(scraper):
+    allowed_domains = ['http://google.com/']
+
+    site_match_a = check_match(site_url, link_a, allowed_domains)
+    site_match_b = check_match(site_url, link_b, allowed_domains)
+
+    print "[ TEST ] LinkA = '{0}'(expeect True), LinkB = '{1}'(expect True)".format(site_match_a,site_match_b)
+
+    if not (site_match_a and site_match_b):
+        passed = False
+
+    declare_test_end( passed )
+
+def test_get_page_links():
+
+    declare_test_start( 'get_page_links()' )
+
+    site_url = "http://timduffy.me/"
+    url = "http://timduffy.me/"
+    allowed_domains = []
+
+    success, page_links, document_length, bad_link = get_page_links(site_url, url, allowed_domains)
+
+    print "[ TEST ] Success: {0}".format(success)
+    print "[ TEST ] Link Count: {0}".format(len(page_links))
+    print "[ TEST ] Document Length: {0}".format(document_length)
+    print "[ TEST ] Bad Link: {0}".format(bad_link) 
+    
+    passed = False
+    if success and len(page_links) > 0 and document_length > 0 and not bad_link:
+        passed = True
+
+    declare_test_end( passed )
+
+def test_find_docs():
+
+    declare_test_start( 'follow_link' ) 
+
     links = []
-    #links.append(('http://timduffy.me/blog.html','TimDuffy.me Blog'))
     links.append(('http://timduffy.me/','TimDuffy.me'))
-    #links.append(('http://www.scottsvilleny.org/','Scottsville, NY'))
-    isodatetime = strftime("%Y-%m-%d %H:%M:%S")
-    urldata = {
-        'urlid': 1,
-        'targeturl': 'http://timduffy.me/',
-        #'targeturl': 'http://www.scottsvilleny.org/',
-        'maxlinklevel': 3,
-        'creationdatetime': '2013-11-18 21:09:30',
-        #'doctypetitle': 'HTML Document',
-        #'docdescription': 'HTML Document',
-        #'doctype': 'text/html',
-        'doctype': 'application/pdf',
-        'disparchdatetime': isodatetime,
-        'allowdomains': [],
+    url_data = {
+        'url_id': 1,
+        'target_url': 'http://timduffy.me/',
+        'maxlink_level': 3,
+        'creation_date_time': str(datetime.datetime.now()),
+        'doc_type': 'application/pdf',
+        'dispatch_datetime': str(datetime.datetime.now()),
+        'allowed_domains': [],
     }
-    print "\nTesting followlinks() ..."
 
-    scraper.status['urldata'] = urldata
-    docs = scraper.followlinks(links=links,level=0)
-
-    print "Number of Docs found: {0}".format(len(docs))
-
-    return docs
-
-def text_getstatus(scraper):
-    print scraper.status
-
-def main():
     uid = str(uuid.uuid4())
+    scraper = Scraper(uid)
+    scraper.set_url_data(url_data)
+    docs = scraper.find_docs( links )
 
-    print "Creating Scraper() instance ..."
+    print '[ TEST ] {0}'.format(json.dumps(scraper.status))
+    print '[ TEST ] {0}'.format(json.dumps(docs))
 
-    scraper = Scraper(uid, DEBUG=True)
-    scraper.run()
+    passed = False
+    if len(docs) > 0:
+        passed = True
+
+    declare_test_end( passed )
+
+if __name__ == '__main__':
 
     print "Running tests ..."
 
@@ -95,24 +141,14 @@ def main():
     test_type_link()    
 
     # checkmatch()
-    #test_checkmatch(scraper)
+    test_check_match()
 
     # getpagelinks
-    #test_getpagelinks(scraper)
+    test_get_page_links()
 
     # folowlinks()
-    docs = test_followlinks(scraper)
-
-    print "Documents found: {0}".format(json.dumps(docs))
+    docs = test_find_docs()
 
     # get scraper status
-    #text_getstatus(scraper)
+    #text_get_status()
 
-    try:
-        scraper.stop();
-    except:
-        pass
-
-    print "Done."
-
-main()

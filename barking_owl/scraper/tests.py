@@ -1,12 +1,20 @@
+from scraper import (
+    type_link,
+    check_match,
+    sanity_check_url,
+    get_page_links,
+)
+
 from scraper import Scraper
+
 import uuid
 from time import strftime
 import pprint
 import json
 
-def test_typelink(scraper):
-    print "\nTesting typelink() ..."
-    success,filetype = scraper.typelink('http://timduffy.me/')
+def test_type_link(scraper):
+    print "\nTesting type_link() ..."
+    success, filetype = type_link('http://timduffy.me/')
     print "\tFiletype = '{0}'".format(filetype)
     if success:
         print "Passed!"
@@ -84,7 +92,7 @@ def main():
     print "Running tests ..."
 
     # typelink()
-    #test_typelink(scraper)    
+    test_type_link()    
 
     # checkmatch()
     #test_checkmatch(scraper)

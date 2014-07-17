@@ -20,7 +20,7 @@ def type_link(link, file_size=1024, sleep_time=2):
     """ type_link() will download a link, and then deturmine it's file type using magic numbers.
     """
 
-    log( "Attempting to type link: '{0}' (using filesize: {1})".format(link,file_size) )
+    #log( "Attempting to type link: '{0}' (using filesize: {1})".format(link,file_size) )
 
     success = False
     file_type = ""
@@ -36,10 +36,10 @@ def type_link(link, file_size=1024, sleep_time=2):
         while(error_count < 5):
             try:
                 payload = urllib2.urlopen(req,timeout=5).read(file_size)
-                log( "Successfully downloaded the first {0} bytes of '{1}'.".format(file_size, link) )
+                #log( "Successfully downloaded the first {0} bytes of '{1}'.".format(file_size, link) )
                 break
             except Exception, e:
-                log( "Error within type_link while trying to download {0} bytes from URL:\n\t{1}\n".format(link,str(e)) )
+                #log( "Error within type_link while trying to download {0} bytes from URL:\n\t{1}\n".format(link,str(e)) )
                 if str(e) != 'time out':
                     raise Exception(e)
                 else:
@@ -50,7 +50,7 @@ def type_link(link, file_size=1024, sleep_time=2):
         success = True
         
     except Exception, e:
-        log( "An error has occured in the type_link() function:\n\tURL: {0}\n\tError: {1}".format(link,str(e)) )
+        #log( "An error has occured in the type_link() function:\n\tURL: {0}\n\tError: {1}".format(link,str(e)) )
         pass
     
     return success, file_type
@@ -62,8 +62,8 @@ def check_match(domain_url, link, allowed_domains):
     site_match = True
     url_data = urlparse.urlparse(link)
 
-    log( "check_match(): urlparse results:" )
-    log( url_data )
+    #log( "check_match(): urlparse results:" )
+    #log( url_data )
 
     if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
          (len(link) >= 8 and link[0:8].lower() == "https://") or
@@ -74,7 +74,7 @@ def check_match(domain_url, link, allowed_domains):
             if not url_a in allowed_domains and not url_b in allowed_domains:
                 site_match = False
 
-    log( "Comparing domain_url='{0}', netloc='{1}', link='{2}', with sitematch='{3}'.".format(domain_url, url_data.netloc, link, site_match) )
+    #log( "Comparing domain_url='{0}', netloc='{1}', link='{2}', with sitematch='{3}'.".format(domain_url, url_data.netloc, link, site_match) )
 
     return site_match
 
@@ -118,30 +118,32 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
     """ get_page_links() will return a list of all of the link on a html page that is passed.
     """
 
-    log( "Getting page links for '{0}' ...".format(url) )
+    #log( "Getting page links for '{0}' ...".format(url) )
 
     success = False
     links = []
-    document_length = 0
+    bandwidth_used = 0
     bad_link = True
     try:
         type_link_success, link_type = type_link(url, file_size, sleep_time)
         if type_link_success == False:
             bad_link = True
-            log( "Bad link found. ( {0} )".format(url) )
+            #log( "Bad link found. ( {0} )".format(url) )
             raise Exception( 'Failed to type link.' );
         
         if link_type != "text/html":
-            log( "Link is not of type text/html." )
+            #log( "Link is not of type text/html." )
             raise Exception( 'Link is not of type text/html' )
             
         try:
-        
+       
+            bandwidth_used = file_size
+ 
             try:
                 html = urllib2.urlopen(url)
             except Exception, e:
                 err_text = "get_page_links(): urllib2 error: '{0}'".format(str(e))
-                log( err_text )
+                #log( err_text )
                 raise Exception( err_text )
             
             # record bandwidth used
@@ -166,7 +168,7 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
                     try:
                         raw_href = tag[verb]
                     except:
-                        log( "tag ('{0}') didn't have verb ('{1}'), ignoring.".format(tag,verb) )
+                        #log( "tag ('{0}') didn't have verb ('{1}'), ignoring.".format(tag,verb) )
                         continue
 
                     match = check_match(domain_url, raw_href, allowed_domains)
@@ -179,22 +181,23 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
 
             success = True
             bad_link = False
+            bandwidth_used = document_length + file_size
         except Exception, e:
             links = []
             sucess = False
-            log( "An error occurred in get_page_links():\n\tURL: {0}\n\tError: {1}".format(url,str(e)) )
+            #log( "An error occurred in get_page_links():\n\tURL: {0}\n\tError: {1}".format(url,str(e)) )
     except Exception, e:
-        log( 'Exception: {0}'.format(str(e)) )
+        #log( 'Exception: {0}'.format(str(e)) )
         pass
     
-    log( "Found {0} links from URL: '{1}', bad_link = {2}.".format(len(links),url,bad_link) )
+    #log( "Found {0} links from URL: '{1}', bad_link = {2}.".format(len(links),url,bad_link) )
 
-    return success, links, document_length, bad_link
+    return success, links, bandwidth_used, bad_link
 
 
 class Scraper(): #threading.Thread):
 
-    def __init__(self,uid=str(uuid.uuid4())): #,DEBUG=False):
+    def __init__(self, uid=str(uuid.uuid4()), type_file_size=1024): #,DEBUG=False):
         """
         __init__() constructor setups the threading enviornment and status variables.
         """
@@ -216,6 +219,8 @@ class Scraper(): #threading.Thread):
         self.status['bandwidth'] = 0
         self.status['ignored_count'] = 0
 
+        self.type_file_size = type_file_size
+
         #self.DEBUG = DEBUG
 
         # start a timer to see if we should be exiting
@@ -225,7 +230,7 @@ class Scraper(): #threading.Thread):
         self.started_callback = None
         self.broadcast_document_found_callback = None
 
-        log( "Scraper INIT successful." )
+        #log( "Scraper INIT successful." )
 
     def set_callbacks(self, finished_callback=None,
             started_callback=None, broadcast_document_found_callback=None):
@@ -286,7 +291,7 @@ class Scraper(): #threading.Thread):
 
         self.reset()
         
-        log( "URL data payload: {0}".format(self.status['url_data']) )
+        #log( "URL data payload: {0}".format(self.status['url_data']) )
 
         # error check all the things
 
@@ -319,7 +324,7 @@ class Scraper(): #threading.Thread):
             url_data['creation_datetime'] = now
 
         if not 'frequency' in url_data:
-            ( "'frequency' not found in URL dictionary, setting to 24 hours" )
+            log( "'frequency' not found in URL dictionary, setting to 24 hours" )
             url_data['frequency'] = 1440 # 24 hours in minutes
 
         if not 'allowed_domains' in url_data:
@@ -345,14 +350,14 @@ class Scraper(): #threading.Thread):
         self.status['url_data'] = {}
         self.status['ignored_count'] = 0
 
-        log( "Scraper data reset successfully." )
+        #log( "Scraper data reset successfully." )
 
     def broadcast_finished(self):
         """
         broadcastfinish() calls the async scraper finished call back with status information within its payload.
         """
         
-        log( "Scraper Finished." )
+        #log( "Scraper Finished." )
 
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
@@ -382,7 +387,7 @@ class Scraper(): #threading.Thread):
         broadcaststart() calls the scraper start async call back with status information within its payload.
         """
         
-        log( "Scraper Starting." )
+        #log( "Scraper Starting." )
         
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
@@ -406,7 +411,7 @@ class Scraper(): #threading.Thread):
             its payload.
         """
 
-        log( "Doc Found: '{0}'.".format(doc_url) )
+        #log( "Doc Found: '{0}'.".format(doc_url) )
 
         isodatetime = strftime("%Y-%m-%d %H:%M:%S")
         packet = {
@@ -429,6 +434,8 @@ class Scraper(): #threading.Thread):
 
     def find_docs(self):
 
+        log( "Starting scraper to find all documents on '{0}' ...".format(self.status['url_data']['target_url']) )
+
         self.status['busy'] = True
         
         self.broadcast_start()
@@ -444,6 +451,8 @@ class Scraper(): #threading.Thread):
 
         self.broadcast_finished()
 
+        log( "Scraping complete!" )
+
         return docs
 
     def follow_links(self, links, parent_links=[], level=0):
@@ -452,7 +461,7 @@ class Scraper(): #threading.Thread):
             recursive function and can run for a very long time if the link level is not defined appropreately.
         """
 
-        log( "Following {0} Links on level {1} ...".format(len(links),level) )
+        #log( "Following {0} Links on level {1} ...".format(len(links),level) )
 
         ret_links = []
         if( level == 0 ): #>= self.status['url_data']['max_link_level'] ):
@@ -460,26 +469,26 @@ class Scraper(): #threading.Thread):
             pass
         else:
             level -= 1
-            log( "Link level = {0}.  working on {1} links: {2}".format(level,len(links),json.dumps(links)) )
+            #log( "Link level = {0}.  working on {1} links: {2}".format(level,len(links),json.dumps(links)) )
                 #print "Processing Links: {0}".format(links)
 
             # we need to keep track of what links we have visited at each
             # level.  Here we are adding to our array each time a new level
             # is seen
  
-            log( 'Current Level: {0}\n'.format(level) )
+            #log( 'Current Level: {0}\n'.format(level) )
  
-            log( "len(processed_links) = {0}".format(len(self.status['processed_links']) ))
+            #log( "len(processed_links) = {0}".format(len(self.status['processed_links']) ))
 
             if len(self.status['processed_links'])-1 < level:
-                log( "Current Level ({0}) does not exist within processed_links link list, adding.".format(level) )
+                #log( "Current Level ({0}) does not exist within processed_links link list, adding.".format(level) )
                 self.status['processed_links'].append([])
 
             for current_link, link_text in links:
                 #link,link_text = _link
 
                 if current_link in self.status['bad_links']:
-                    log( 'current link in bad links list, continue.' )
+                    #log( 'current link in bad links list, continue.' )
                     continue
 
                 log( "Working on '{0}' ...".format(current_link) )
@@ -494,58 +503,41 @@ class Scraper(): #threading.Thread):
 
                 # first check if we have already processed the link at our level
                 if current_link in self.status['processed_links'][level]:
-                    log( '{0} already processed at CURRENT level (current level: {1}).'.format(current_link, level) )
+                    #log( '{0} already processed at CURRENT level (current level: {1}).'.format(current_link, level) )
                     continue
                 
                 exists = False
                 if level != 1:
                     for i in range(0,level-1):
                         if current_link in self.status['processed_links'][level-1-i]:
-                            log( '{0} already processed at level {1} (current level: {2})'.format(current_link, level-1-i, level) )
+                            #log( '{0} already processed at level {1} (current level: {2})'.format(current_link, level-1-i, level) )
                             exists = True
                             break
 
-                #if (link in self.status['processed_links'][level-1]) or link in self.status['bad_links']:
-                #l = level
-                #exists = True
-                #while(l > 0 and exists):
-                #    log( "current link level: {0}".format(level) )
-                #    log( "for level {0}, checking if '{1}' is in: ".format(l, current_link)) 
-                #    for processed_link in self.status['processed_links'][l]:
-                #        log( '\t{0}'.format(processed_link) )
-                #
-                #    if not current_link in self.status['processed_links'][l]:
-                #        log( "For level {0}, the file does NOT exists.  Existing while loop.".format(l) )
-                #        exists = False
-                #        break
-                #    log( "The file does exist at this level, testing level {0}".format(l-1) )
-                #    l=l-1
-
-                #raise Exception('debug')
-
                 #if any(link in r for r in self.status['processed_links']) or link in self.status['bad_links']:
                 if exists:
-                    log( "{0} already processed, skipping.".format(current_link) )
+                    #log( "{0} already processed, skipping.".format(current_link) )
                     self.status['ignored_count']+=1
                     continue
 
 
                 # get all of the links from the page
                 ignored = 0
-                success, current_page_links, doc_length, bad_link = get_page_links(
+                success, current_page_links, document_length, bad_link = get_page_links(
                     self.status['url_data']['target_url'], 
                     current_link,
                     self.status['url_data']['allowed_domains'],
                 )
+                self.status['bandwidth'] += document_length
 
-                log( "At level {0}, for url '{1}', current page links: {2}".format(level, current_link, json.dumps(current_page_links)) )
+                #log( "At level {0}, for url '{1}', current page links: {2}".format(level, current_link, json.dumps(current_page_links)) )
 
                 if bad_link:
                     self.status['bad_links'].append(current_link)
                     continue
 
                 if not success:
-                    log( "Unable to get page links from link, skipping. ({0})".format(current_link) )
+                    #log( "Unable to get page links from link, skipping. ({0})".format(current_link) )
                     continue
 
                 # sanitize the url link, and save it to our list of processed_links links
@@ -563,28 +555,29 @@ class Scraper(): #threading.Thread):
                     if( match == True ):
                         page_links.append((link,link_text))
                
-                log( 'found {0} page links to follow'.format(len(page_links)) )
+                #log( 'found {0} page links to follow'.format(len(page_links)) )
  
                 # Follow all of the valid links on the page, and find all of the docs.
                 got_links = self.follow_links(page_links, links, level)
 
-                log( 'Processing page links to find documents' )
+                #log( 'Processing page links to find documents' )
 
                 # Some of the links that were returned from this page might be docs we are 
                 # interested in if they are, add them to the list of pdfs to be returned 'ret_links'
                 for the_link, link_text in page_links:
                     #the_link,link_text = _the_link
                     if not any(the_link in r for r in ret_links) and not any(the_link in r for r in self.status['processed_links']):
-                        success, link_type = type_link(the_link)
+                        success, link_type = type_link(the_link, file_size = self.type_file_size)
+                        self.status['bandwidth'] += self.type_file_size
                         if success:
 
-                            log( "Link successfully typed as '{0}'.".format(link_type) )
+                            #log( "Link successfully typed as '{0}'.".format(link_type) )
 
                             # add the link to the list of processed_links links
                             if not the_link in self.status['processed_links'][level]:
                                 self.status['processed_links'][level].append(the_link)
                             else:
-                                self.status['ignored_count']+=1
+                                self.status['ignored_count'] += 1
 
                             # if the link is of the type we are looking for, add it to the 
                             # list of docs to return
@@ -593,11 +586,12 @@ class Scraper(): #threading.Thread):
                                
                                 #broadcast the doc to the bus!
                                 self.broadcast_document(the_link,link_text)
-                        #else:
-                        #    log( "WARNING: Link unsuccessfully typed! ({0})".format(the_link) )
+                        else:
+                        #    #log( "WARNING: Link unsuccessfully typed! ({0})".format(the_link) )
                         #    ignored += 1
+                            self.status['ignored_count'] += 1
                     #else:
-                    #    log( "Page link '{0}' already processed, skipping.".format(the_link) )
+                    #    #log( "Page link '{0}' already processed, skipping.".format(the_link) )
 
                 # Follow all of the valid links on the page, and find all of the docs.
                 #got_links = self.follow_links(page_links, links, level)
@@ -613,9 +607,9 @@ class Scraper(): #threading.Thread):
                     current_link
                 )
                 self.status['processed_links'][level].append(_l)
-                log( "Adding '{0}' to the processed_links list.".format(_l) )
+                #log( "Adding '{0}' to the processed_links list.".format(_l) )
 
-                log( "Done processing url: '{0}'".format(link) )
+                #log( "Done processing url: '{0}'".format(link) )
 
             level -= 1
 

@@ -138,7 +138,7 @@ def test_find_docs_external():
     url_data = {
         'url_id': 1,
         'target_url': 'http://www.scottsvilleny.org/',
-        'max_link_level': 2,
+        'max_link_level': 5,
         'creation_date_time': str(datetime.datetime.now()),
         'doc_type': 'application/pdf',
         'dispatch_datetime': str(datetime.datetime.now()),
@@ -150,8 +150,14 @@ def test_find_docs_external():
     scraper.set_url_data(url_data)
     docs = scraper.find_docs( )
 
-    print '[ TEST ] {0}'.format(json.dumps(scraper.status))
-    print '[ TEST ] {0}'.format(json.dumps(docs))
+    #print '[ TEST ] {0}'.format(json.dumps(scraper.status))
+    #print '[ TEST ] {0}'.format(json.dumps(docs))
+
+    with open('find_docs_external_results.json','w') as f:
+        f.write(json.dumps(scraper.status))
+
+    with open('find_docs_external_all_docs.json', 'w') as f:
+        f.write(json.dumps(docs))
 
     passed = False
     if len(docs) > 0:
@@ -179,7 +185,6 @@ if __name__ == '__main__':
     #start_time = time.time()
     #docs = test_find_docs_external()
     #total_time = time.time() - start_time
-
     #print "External scraping took {0} seconds.".format(total_time)
 
     # get scraper status

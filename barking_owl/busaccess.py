@@ -4,11 +4,11 @@ import uuid
 
 class BusAccess(object):
 
-    def __init__(self,myid,address="localhost",exchange="barkingowl",DEBUG=False):
+    def __init__(self,my_id,address="localhost",exchange="barkingowl",DEBUG=False):
 
         self.address = address
         self.exchange = exchange
-        self.myid = myid
+        self.my_id = my_id
         self.DEBUG = DEBUG
 
         # outgoing messages
@@ -18,7 +18,7 @@ class BusAccess(object):
         result = self.reqchan.queue_declare(exclusive=True)
         queue_name = result.method.queue
         self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
-        self.reqchan.basic_consume(self.reqcallback,queue=queue_name,no_ack=True)
+        self.reqchan.basic_consume(self.req_callback,queue=queue_name,no_ack=True)
 
         # incoming messages
         self.respcon = pika.BlockingConnection(pika.ConnectionParameters(host=self.address))
@@ -41,7 +41,7 @@ class BusAccess(object):
 
         self.reqchan.start_consuming()
 
-    def stoplistening(self):
+    def stop_listening(self):
 
         """
         Stops the pika listener on the message bus.
@@ -50,7 +50,7 @@ class BusAccess(object):
         if self.DEBUG:
             print "Halting listening on bus ..."
 
-    def setcallback(self,callback):
+    def set_callback(self,callback):
 
         """
         This sets the callback function to be called when a new message comes in.
@@ -61,7 +61,7 @@ class BusAccess(object):
         if self.DEBUG:
             print "Callback set."
 
-    def sendmsg(self,command,destinationid,message):
+    def send_message(self,command,destination_id,message):
         
         """
         This takes in a command, a destinationid (can be an id or 'broadcast'),
@@ -189,8 +189,8 @@ class BusAccess(object):
 
         payload = {
             'command': command,
-            'sourceid': self.myid,
-            'destinationid': destinationid,
+            'source_id': self.my_id,
+            'destination_id': destination_id,
             'message': message,
         }
         jbody = json.dumps(payload)
@@ -198,7 +198,7 @@ class BusAccess(object):
 
         print "Message sent successfully to message bus."
 
-    def reqcallback(self,ch,method,properties,body):
+    def req_callback(self,ch,method,properties,body):
 
         """
         
@@ -214,18 +214,23 @@ class BusAccess(object):
             if self.DEBUG:
                 print "Call back called successfully."
 
-def callback(message):
+def callback(payload):
 
-    print message
+    print payload
 
 if __name__ == '__main__':
 
-    myid = str(uuid.uuid4())
-    ba = BusAccess(myid=myid,DEBUG=True)
+    my_id = str(uuid.uuid4())
+    ba = BusAccess(
+        my_id = my_id,
+        address = "localhost",
+        exchange = "barkingowl",
+        DEBUG = True
+    )
     
-    ba.setcallback(callback)
+    ba.set_callback(callback)
 
-    ba.sendmsg('*','broadcast',{'msg':'test'})
+    ba.send_message('*','broadcast',{'msg':'test'})
 
     ba.listen()
 

@@ -7,6 +7,14 @@ BarkingOwl is a scalable web crawler intended to be used to
 find specific document types on websites, such as PDFs, XLS, 
 TXT, HTML, etc.
 
+For documentation checkout the github wiki:
+
+https://github.com/thequbit/BarkingOwl/wiki
+
+For a simple web frontend, check out backingowl-frontend:
+
+https://github.com/thequbit/barkingowl-frontend
+
 '''
 
 setup(

@@ -1,9 +1,9 @@
 BarkingOwl
 ==========
 
-Scalable web crawler.
-
 BarkingOwl is a scalable web crawler intended to be used to find specific document types such as PDFs.
+
+**Not a hard-core hacker?**  Check out the web front-end tool for barkingowl [here](https://github.com/thequbit/barkingowl-frontend)
 
 ####Background and Description####
 
@@ -22,6 +22,8 @@ significant scalability and extensibility.
 BarkingOwl is on the pypi network, thus it can be installed using pip:
 
     > pip install barkingowl
+
+To use BarkingOwl you will need to install RabbitMQ.  Information on how to install RabbitMQ can be found here: [http://www.rabbitmq.com/download.html](http://www.rabbitmq.com/download.html)
 
 ####Documentation####
 

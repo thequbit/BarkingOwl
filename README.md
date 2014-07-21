@@ -23,6 +23,8 @@ BarkingOwl is on the pypi network, thus it can be installed using pip:
 
     > pip install barkingowl
 
+To use BarkingOwl you will need to install RabbitMQ.  Information on how to install RabbitMQ can be found here: [http://www.rabbitmq.com/download.html](http://www.rabbitmq.com/download.html)
+
 ####Documentation####
 
 Check out the [wiki](https://github.com/thequbit/BarkingOwl/wiki)!

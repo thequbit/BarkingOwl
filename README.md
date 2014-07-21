@@ -1,9 +1,9 @@
 BarkingOwl
 ==========
 
-Scalable web crawler.
-
 BarkingOwl is a scalable web crawler intended to be used to find specific document types such as PDFs.
+
+**Not a hard-core hacker?**  Check out the web front-end tool for barkingowl [here](https://github.com/thequbit/barkingowl-frontend)
 
 ####Background and Description####
 

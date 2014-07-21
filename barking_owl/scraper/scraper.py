@@ -331,10 +331,6 @@ class Scraper(): #threading.Thread):
             log( "'allowed_domains' not found in URL dictionary, setting to []" )
             url_data['allowed_domains'] = []
 
-        print "\n"
-        print type(url_data['max_link_level'])
-        print "\n"
-
         # if the data is being supplied by a CSV max_link_level can end up as a string
         # we'll test for this, and convert to a number
         if isinstance(url_data['max_link_level'], str) \

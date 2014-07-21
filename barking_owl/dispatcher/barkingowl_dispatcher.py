@@ -119,6 +119,9 @@ class Dispatcher():
 
         self.current_url_index = 0
 
+        if self.DEBUG:
+            print "Updated ULR list with {0} URLs".format(len(self.urls))
+
         self.urls = urls
 
     def get_next_url_index(self):

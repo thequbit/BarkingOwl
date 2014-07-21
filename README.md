@@ -23,19 +23,6 @@ BarkingOwl is on the pypi network, thus it can be installed using pip:
 
     > pip install barkingowl
 
-####Stand Alone Scraper####
-
-Once installed, BarkingOwl can be used in a number of ways.  First, the scraper can stand alone and be invoked with no interaction with the message bus.  This method is convient for use with a single website that needs to be scraped for specific document types, or if a site outline needs to be established.
-
-####Dispatched Scrapers####
-
-The other method of using the BarkingOwl infastruction is to leverage the massive scalability of the message bus.  BarkingOwl leverages the fexability, speed, and scalability of the RabitMQ (0mq) system.  A single Dispatcher instance can be launched and dispatch URLs to be scraped to any number of scrapers (hundreds or thousands if so need).
-
-The system has been tested by it's author, [Timothy Duffy](https://github.com/thequbit) with 256 scapers successfully.
-
 ####Documentation####
 
-Dispatcher documentation can be found here: [README.md](https://github.com/thequbit/BarkingOwl/blob/master/barking_owl/dispatcher/README.md)
-
-Scraper documentation can be found here: [README.md](https://github.com/thequbit/BarkingOwl/blob/master/barking_owl/scraper/README.md)
-
+Check out the [wiki](https://github.com/thequbit/BarkingOwl/wiki)!

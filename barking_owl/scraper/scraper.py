@@ -124,6 +124,7 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
     links = []
     bandwidth_used = 0
     bad_link = True
+    #if True:
     try:
         type_link_success, link_type = type_link(url, file_size, sleep_time)
         if type_link_success == False:
@@ -208,6 +209,8 @@ class Scraper(): #threading.Thread):
         self.started = False
         self.uid = uid
         #self.interval = 1
+
+        self.exhaustive = False
 
         self.status = {}
         self.status['busy'] = False
@@ -317,6 +320,9 @@ class Scraper(): #threading.Thread):
         if not 'max_link_level' in url_data:
             log( "'max_link_level' not found in URL dictionary, setting to 1" )
             url_data['max_link_level'] = 1
+        elif url_data['max_link_level'] == -1:
+            log("NOTE: URL set to Exhaustive mode.  This may take an extremely long time!")
+            self.exhaustive = True
 
         if not 'creation_datetiem' in url_data:
             now = strftime("%Y-%m-%d %H:%M:%S") 
@@ -354,6 +360,8 @@ class Scraper(): #threading.Thread):
         self.status['busy'] = False
         self.status['url_data'] = {}
         self.status['ignored_count'] = 0
+
+        self.exhaustive = False
 
         #log( "Scraper data reset successfully." )
 
@@ -448,11 +456,19 @@ class Scraper(): #threading.Thread):
         links = []
         links.append( (self.status['url_data']['target_url'],'<root>') )
         
-        max_level = self.status['url_data']['max_link_level']
-        for i in range(0,max_level+1):
-            self.status['processed_links'].append([])
-        
-        docs = self.follow_links(links, level=max_level+1)
+        if self.exhaustive == False:
+            max_level = self.status['url_data']['max_link_level']
+            for i in range(0,max_level+1):
+                self.status['processed_links'].append([])
+            docs = self.follow_links(links, level=max_level+1)
+        else:
+            """ !!! NOTE !!!
+                This mode searches the target link until all possible
+                URLs have been seen.  Note that this may take a VERY
+                long time.
+            """
+            self.status['processed_links'] = []        
+            docs = self.find_all_docs(links)
 
         self.broadcast_finished()
 
@@ -461,6 +477,91 @@ class Scraper(): #threading.Thread):
         log( "Scraping complete!" )
 
         return docs
+
+    def find_all_docs(self, links):
+
+        log("find_all_docs(): Starting ...")
+
+        ret_links = []
+
+        log("Current Bandwidth Usage (bytes): {0}".format(self.status['bandwidth']))
+        log("Total Unique Links Seen: {0}".format(len(self.status['processed_links'])))
+
+        for current_link, link_text in links:
+
+            log("find_all_docs(): Working on '{0}'".format(current_link))
+
+            # test to see if we have already seen this link
+            if current_link in self.status['processed_links']:
+                continue
+            else:
+                self.status['processed_links'].append(current_link)
+
+            if current_link in self.status['bad_links']:
+                continue
+
+            log("find_all_docs(): Getting all links on page ...")
+            
+            # get all of the links from the page
+            ignored = 0
+            success, current_page_links, document_length, bad_link = get_page_links(
+                self.status['url_data']['target_url'],
+                current_link,
+                self.status['url_data']['allowed_domains'],
+            )
+            self.status['bandwidth'] += document_length
+
+            log("find_all_docs(): Found {0} links on page.".format(len(current_page_links)))
+
+            if bad_link == True:
+                self.status['bad_links'].append(current_link)
+                continue
+
+            if not success:
+                #log( "Unable to get page links from link, skipping. ({0})".format(current_link) )
+                continue
+           
+            # success.  We not have a list of the links on the page
+
+            log("find_all_docs(): Successfully got links on page.")
+ 
+            self.status['link_count'] += 1
+
+            # Look at the links found on the page, and add those that are within
+            # the allowed domains to page_links to process
+            page_links = []
+            for match, link, link_text in current_page_links:
+                # match,link,link_text = pagelink
+                if( match == True ):
+                    page_links.append((link,link_text))
+
+            log("find_all_docs(): Calling self recursively ...")
+
+            # Follow all of the valid links on the page, and find all of the docs.
+            got_links = self.find_all_docs(page_links) 
+
+            # create list of all links
+            all_the_links = page_links + got_links
+
+            log("find_all_docs(): Processing {0} links ...".format(len(all_the_links)))
+
+            for the_link, the_link_text in all_the_links:
+
+                #if the_link in self.status['processed_links']:
+                #    continue
+                #else:
+                #    self.status['processed_links'].append(the_link)
+
+                success, link_type = type_link(the_link, file_size=self.type_file_size)
+                self.status['bandwidth'] += self.type_file_size
+                if success == True:
+                    if link_type == self.status['url_data']['doc_type']:
+                         ret_links.append((the_link,link_text))
+                         self.broadcast_document(the_link,link_text)
+                    else:
+                         self.status['ignored_count'] += 1
+ 
+        return ret_links
 
     def follow_links(self, links, parent_links=[], level=0):
         """ followlinks() is the heart of the BarkingOwl Scraper.  It follows links to a specified link level,
@@ -561,6 +662,7 @@ class Scraper(): #threading.Thread):
                 # Look at the links found on the page, and add those that are within
                 # the allowed domains to page_links to process
                 page_links = []
+
                 for match, link, link_text in current_page_links:
                     # match,link,link_text = pagelink
                     if( match == True ):

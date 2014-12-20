@@ -9,7 +9,7 @@ import sys
 import urlparse
 import uuid
 import json
-
+import datetime
 import tldextract
 
 _DEBUG = True
@@ -249,10 +249,10 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
         except Exception, e:
             links = []
             sucess = False
-            #log( "An error occurred in get_page_links():\n\tURL: {0}\n\tError: {1}".format(url,str(e)) )
+            #log( "get_page_links():Exception: \n\tURL: {0}\n\tError: {1}".format(url,str(e)) )
 
     except Exception, e:
-        #log( 'Exception: {0}'.format(str(e)) )
+        #log( 'get_page_links():Exception: {0}'.format(str(e)) )
         pass
     
     #log( "Found {0} links from URL: '{1}', bad_link = {2}.".format(len(links),url,bad_link) )
@@ -458,8 +458,6 @@ class Scraper(): #threading.Thread):
 
         log( "Calling 'finished' callback function ..." )
 
-        print self.status
-
         if self.finished_callback != None:
             self.finished_callback(payload)
 
@@ -549,16 +547,15 @@ class Scraper(): #threading.Thread):
 
     def find_all_docs(self, links):
 
-        log("find_all_docs(): Starting ...")
+        #log("find_all_docs(): Starting ...")
 
         ret_links = []
 
-        log("Current Bandwidth Usage (bytes): {0}".format(self.status['bandwidth']))
-        log("Total Unique Links Seen: {0}".format(len(self.status['processed_links'])))
+        log("[{0}] find_all_docs(): Link Count: {1}, Bandwidth (bytes): {2}".format(str(datetime.datetime.now()), len(self.status['processed_links']),self.status['bandwidth']))
 
         for current_link, link_text in links:
 
-            log("find_all_docs(): Working on '{0}'".format(current_link))
+            #log("find_all_docs(): Working on '{0}'".format(current_link))
 
             # test to see if we have already seen this link
             if current_link in self.status['processed_links']:
@@ -569,7 +566,7 @@ class Scraper(): #threading.Thread):
             if current_link in self.status['bad_links']:
                 continue
 
-            log("find_all_docs(): Getting all links on page ...")
+            #log("find_all_docs(): Getting all links on page ...")
             
             # get all of the links from the page
             ignored = 0
@@ -580,7 +577,7 @@ class Scraper(): #threading.Thread):
             )
             self.status['bandwidth'] += document_length
 
-            log("find_all_docs(): Found {0} links on page.".format(len(current_page_links)))
+            #log("find_all_docs(): Found {0} links on page.".format(len(current_page_links)))
 
             if bad_link == True:
                 self.status['bad_links'].append(current_link)
@@ -592,7 +589,7 @@ class Scraper(): #threading.Thread):
            
             # success.  We not have a list of the links on the page
 
-            log("find_all_docs(): Successfully got links on page.")
+            #log("find_all_docs(): Successfully got links on page.")
  
             self.status['link_count'] += 1
 
@@ -602,9 +599,23 @@ class Scraper(): #threading.Thread):
             for match, link, link_text in current_page_links:
                 # match,link,link_text = pagelink
                 if( match == True ):
-                    page_links.append((link,link_text))
+                    
+                    # if it's a match, check to see if it's our target doc type
+                    success, link_type = type_link(link, file_size=self.type_file_size)
+                    if success and link_type == self.status['url_data']['doc_type']:
+                        if not link in self.status['documents']:
+                             # save to our response links
+                             ret_links.append((link,link_text))
 
-            log("find_all_docs(): Calling self recursively ...")
+                             # broadcast the doc
+                             self.broadcast_document(link,link_text)
+
+                             # save the doc to the list of documents found
+                             self.status['documents'].append(link)
+                    else:
+                        page_links.append((link,link_text))
+
+            #log("find_all_docs(): Calling self recursively ...")
 
             # Follow all of the valid links on the page, and find all of the docs.
             got_links = self.find_all_docs(page_links) 
@@ -612,7 +623,7 @@ class Scraper(): #threading.Thread):
             # create list of all links
             all_the_links = page_links + got_links
 
-            log("find_all_docs(): Processing {0} links ...".format(len(all_the_links)))
+            #log("find_all_docs(): Processing {0} links ...".format(len(all_the_links)))
 
             for the_link, the_link_text in all_the_links:
 
@@ -626,7 +637,10 @@ class Scraper(): #threading.Thread):
                 if success == True:
                     if link_type == self.status['url_data']['doc_type']:
                          if not the_link in self.status['documents']:
+                             # save to our response links
                              ret_links.append((the_link,link_text))
+
+                             # broadcast doc
                              self.broadcast_document(the_link,link_text)
 
                              # save the doc to the list of documents found

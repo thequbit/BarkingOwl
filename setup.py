@@ -19,7 +19,7 @@ https://github.com/thequbit/barkingowl-frontend
 
 setup(
     name="BarkingOwl",
-    version="0.3.0",
+    version="0.3.0.1",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",
@@ -37,6 +37,7 @@ setup(
       "python-magic==0.4.6",
       "six==1.5.2",
       "wsgiref==0.1.2",
+      "tldextract==1.5.1",
     ], 
     url="https://github.com/thequbit/BarkingOwl",
     classifiers=[

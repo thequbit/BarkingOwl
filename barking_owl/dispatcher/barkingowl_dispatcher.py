@@ -330,7 +330,7 @@ if __name__ == '__main__':
     url = {'target_url': "http://timduffy.me/",
            'title': "TimDuffy.Me",
            'description': "Tim Duffy's Personal Website",
-           'max_link_level': 3,
+           'max_link_level': -1,
            'creation_datetime': str(strftime("%Y-%m-%d %H:%M:%S")),
            'doc_type': 'application/pdf',
            'frequency': 2,

@@ -10,6 +10,8 @@ import urlparse
 import uuid
 import json
 
+import tldextract
+
 _DEBUG = True
 
 def log(entry):
@@ -60,21 +62,76 @@ def check_match(domain_url, link, allowed_domains):
     """
     
     site_match = True
-    url_data = urlparse.urlparse(link)
+    url_scheme = urlparse.urlparse(link).scheme
+    allowed_schemes = [
+        'http',
+        'https',
+        'ftp',
+    ]
 
-    #log( "check_match(): urlparse results:" )
-    #log( url_data )
+    # get root domain for our target url
+    domain_url_data = tldextract.extract(domain_url)
+    domain_url_root = '{0}.{1}'.format(domain_url_data.domain, domain_url_data.suffix)
+    
+    # get root domain of the link
+    link_data = tldextract.extract(link)
+    link_root = '{0}.{1}'.format(link_data.domain, link_data.suffix)
 
-    if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
-         (len(link) >= 8 and link[0:8].lower() == "https://") or
-         (len(link) >= 3 and link[0:6].lower() == "ftp://") ): 
-        url_a = "{0}://{1}".format(url_data.scheme, url_data.netloc)
-        url_b = "{0}://{1}/".format(url_data.scheme, url_data.netloc)
-        if(url_a != domain_url and url_b != domain_url):
-            if not url_a in allowed_domains and not url_b in allowed_domains:
-                site_match = False
+    #log( "check_match(): domain_url_root='{0}', link_root='{1}'".format(domain_url_root, link_root) )
 
-    #log( "Comparing domain_url='{0}', netloc='{1}', link='{2}', with sitematch='{3}'.".format(domain_url, url_data.netloc, link, site_match) )
+    if url_scheme in allowed_schemes:
+
+        if link_root != domain_url_root and not link_root in allowed_domains:
+
+            site_match = False
+
+    #log( "check_match(): link='{0}'".format(link) )
+    #log( "check_match(): site_match='{0}', domain_url_root='{1}', link_root='{2}'".format(site_match, domain_url_root, link_root) )
+    #log( "" )
+
+#    #if ( (len(link) >= 7 and link[0:7].lower() == "http://") or
+#    #     (len(link) >= 8 and link[0:8].lower() == "https://") or
+#    #     (len(link) >= 3 and link[0:6].lower() == "ftp://") ): 
+#
+#        url_data = tldextract.extract(link)
+#
+#        link_root = '{0}.{1}'.format(url_data.domain,url_data.suffix)
+#
+#        if root_domain_url != link_root_domain
+#
+#        url_a = "{0}://{1}".format(url_data.scheme, url_data.hostname)
+#        url_b = "{0}://{1}/".format(url_data.scheme, url_data.hostname)
+#        #url_c = "{0}://{1}".format(url_data.scheme, url_data.netloc)
+#        #url_d = "{0}://{1}/".format(url_data.scheme, url_data.netloc)
+#        if url_a != domain_url and url_b != domain_url and \
+#                url_a != root_domain_url and url_b != root_domain_url:
+#            if not url_a in allowed_domains and \
+#                    not url_b in allowed_domains: # and \
+#                    #not url_c in allowed_domains and \
+#                    #not url_d in allowed_domains:
+#
+#                # we check for the root domain and the full net location
+#                # with and without a trailing slash.  If there is no match
+#                # then we are not a match
+#
+#                site_match = False
+#
+#        print "\nurls:\n"
+#        print url_a
+#        print url_b
+#        #print url_c
+#        #print url_d
+#        print "\ndomain_url:\n"
+#        print domain_url
+#        print root_domain_url
+#        print "\nallowed_domains:\n"
+#        print allowed_domains
+#        print "\nmatch:\n"
+#        print site_match
+#        print "\n\n"
+#    
+#
+#    #log( "Comparing domain_url='{0}', hostname='{1}', netloc='{2}', link='{3}', with site_match='{4}'.".format(domain_url, url_data.hostname, url_data.netloc, link, site_match) )
 
     return site_match
 
@@ -118,7 +175,7 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
     """ get_page_links() will return a list of all of the link on a html page that is passed.
     """
 
-    #log( "Getting page links for '{0}' ...".format(url) )
+    #log( "get_page_links(): Getting page links for '{0}' ...".format(url) )
 
     success = False
     links = []
@@ -136,6 +193,7 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
             #log( "Link is not of type text/html." )
             raise Exception( 'Link is not of type text/html' )
             
+        #if True:
         try:
        
             bandwidth_used = file_size
@@ -161,11 +219,14 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
                 tags = soup.find_all(tag_type)
                 for tag in tags:
                 
+                    #log( 'get_page_links(): working on tag: {0}'.format(tag) )
+
                     if len(tag.contents) >= 1:
                         link_text = unicode(tag.string).strip()
                     else:
                         link_text = ""
 
+                    raw_href = ''
                     try:
                         raw_href = tag[verb]
                     except:
@@ -175,7 +236,9 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
                     match = check_match(domain_url, raw_href, allowed_domains)
                     abs_link = urljoin(domain_url, raw_href)
                     links.append((match,abs_link,link_text))
-        
+       
+                    #log( 'get_page_links(): raw_href={0}, match={1}, abs_link={2}, links.length={3}'.format( raw_href, match, abs_link, len(links)) )
+ 
                     abs_links = sanity_check_url(domain_url, raw_href)
                     for l in abs_links:
                         links.append((match,l,link_text))
@@ -187,6 +250,7 @@ def get_page_links(domain_url, url, allowed_domains, file_size=1024, sleep_time=
             links = []
             sucess = False
             #log( "An error occurred in get_page_links():\n\tURL: {0}\n\tError: {1}".format(url,str(e)) )
+
     except Exception, e:
         #log( 'Exception: {0}'.format(str(e)) )
         pass
@@ -221,6 +285,7 @@ class Scraper(): #threading.Thread):
         self.status['url_data'] = {}
         self.status['bandwidth'] = 0
         self.status['ignored_count'] = 0
+        self.status['documents'] = []
 
         self.type_file_size = type_file_size
 
@@ -337,6 +402,8 @@ class Scraper(): #threading.Thread):
             log( "'allowed_domains' not found in URL dictionary, setting to []" )
             url_data['allowed_domains'] = []
 
+
+
         # if the data is being supplied by a CSV max_link_level can end up as a string
         # we'll test for this, and convert to a number
         if isinstance(url_data['max_link_level'], str) \
@@ -390,6 +457,8 @@ class Scraper(): #threading.Thread):
         }
 
         log( "Calling 'finished' callback function ..." )
+
+        print self.status
 
         if self.finished_callback != None:
             self.finished_callback(payload)
@@ -556,8 +625,13 @@ class Scraper(): #threading.Thread):
                 self.status['bandwidth'] += self.type_file_size
                 if success == True:
                     if link_type == self.status['url_data']['doc_type']:
-                         ret_links.append((the_link,link_text))
-                         self.broadcast_document(the_link,link_text)
+                         if not the_link in self.status['documents']:
+                             ret_links.append((the_link,link_text))
+                             self.broadcast_document(the_link,link_text)
+
+                             # save the doc to the list of documents found
+                             self.status['documents'].append(the_link)
+
                     else:
                          self.status['ignored_count'] += 1
  

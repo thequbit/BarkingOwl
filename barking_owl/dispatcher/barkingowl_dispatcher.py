@@ -7,11 +7,13 @@ import threading
 
 import datetime
 
-#from models import *
+from barking_owl.busaccess import BusAccess
 
 class Dispatcher():
 
-    def __init__(self,address='localhost',exchange='barkingowl',self_dispatch=True,uid=str(uuid.uuid4()),DEBUG=False):
+    def __init__(self,address='localhost',exchange='barkingowl',
+            self_dispatch=True,uid=str(uuid.uuid4()),url_parameters=None,
+            DEBUG=False):
         """
 
         __init__() constructor will setup message bus as well as status variables.
@@ -51,6 +53,14 @@ class Dispatcher():
                 default value here creates a uuid for you to use.  If there is no reason
                 to have the uuid a specfic string, then use the default.
 
+        url_parameters
+            default
+                None
+            description
+                pika.URLParameters object holding the URL of the AMQ server to connec to.
+                Defaults to None, and will not be looked at if None.  If not None, then
+                the address field is ignored, and url_parameters is used.
+
         DEBUG
             default
                 False
@@ -60,13 +70,13 @@ class Dispatcher():
                
         """ 
 
-        # create our uuid
-        self.uid = uid
 
         self.address = address
         self.exchange = exchange
-        self.DEBUG = DEBUG
         self.self_dispatch = self_dispatch
+        self.uid = uid
+        self.url_parameters = url_parameters
+        self.DEBUG = DEBUG
 
         self.interval = 5 # 5 seconds
         self.exiting = False
@@ -77,19 +87,32 @@ class Dispatcher():
         self.scrapers = []
         #self.runs = []
 
-        #setup message bus
-        self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
-        self.reqchan = self.reqcon.channel()
-        self.reqchan.exchange_declare(exchange=exchange,type='fanout')
-        result = self.reqchan.queue_declare(exclusive=True)
-        queue_name = result.method.queue
-        self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
-        self.reqchan.basic_consume(self._reqcallback,queue=queue_name,no_ack=True)
-       
-        self.respcon = pika.BlockingConnection(pika.ConnectionParameters(host=self.address))
-        self.respchan = self.respcon.channel()
-        self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
+        self.bus_access = BusAccess(
+            uid = self.uid,
+            address = self.address,
+            exchange = self.exchange,
+            url_parameters = self.url_parameters,
+            DEBUG = self.DEBUG,
+        )
 
+        self.bus_access.set_callback(
+            callback = self._reqcallback,
+        )
+
+
+        #setup message bus
+#        self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
+#        self.reqchan = self.reqcon.channel()
+#        self.reqchan.exchange_declare(exchange=exchange,type='fanout')
+#        result = self.reqchan.queue_declare(exclusive=True)
+#        queue_name = result.method.queue
+#        self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
+#        self.reqchan.basic_consume(self._reqcallback,queue=queue_name,no_ack=True)
+#       
+#        self.respcon = pika.BlockingConnection(pika.ConnectionParameters(host=self.address))
+#        self.respchan = self.respcon.channel()
+#        self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
+#
         self.broadcast_status()
 
     def set_urls(self,urls):
@@ -152,7 +175,7 @@ class Dispatcher():
                         print "The URL has not finished yet, waiting ..."
                     if now >= start_datetime + datetime.timedelta(hours=24):
                         if self.DEBUG:
-                            print "WARNING! The scraper has been out scraper for over 24 hours.  Returning URL to pool."
+                            print "WARNING! The scraper has been out scraping for over 24 hours.  Returning URL to pool."
                         # the scraper has been running for over a day, rerun it
                         url_index = i
                         break
@@ -175,9 +198,13 @@ class Dispatcher():
         #self.urls = self._geturls()
         #self.broadcasturls()
         #self.urlindex = len(self.urls)-1
+        
         if self.DEBUG:
             print "Listening for messages on Message Bus ..."
-        self.reqchan.start_consuming()
+        
+        #self.reqchan.start_consuming()
+
+        self.bus_access.listen()
 
     def broadcast_status(self):
 
@@ -187,14 +214,20 @@ class Dispatcher():
             'scrapers': self.scrapers,
             'status_datetime': str(datetime.datetime.now()), 
         }
-        payload = {
-            'command': 'dispatcher_status',
-            'source_id': self.uid,
-            'destination_id': 'broadcast',
-            'message': packet,
-        }
-        jbody = json.dumps(payload)
-        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        #payload = {
+        #    'command': 'dispatcher_status',
+        #    'source_id': self.uid,
+        #    'destination_id': 'broadcast',
+        #    'message': packet,
+        #}
+        #jbody = json.dumps(payload)
+        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+
+        self.bus_access.send_message(
+            command = 'dispatcher_status',
+            destination_id = 'broadcast',
+            message = packet,
+        )
 
         if self.exiting == False:
             threading.Timer(self.interval, self.broadcast_status).start()
@@ -208,14 +241,20 @@ class Dispatcher():
 
         packet = self.urls[url_index]
 
-        payload = {
-            'command': 'url_dispatch',
-            'source_id': self.uid,
-            'destination_id': destination_id,
-            'message': packet
-        }
-        jbody = json.dumps(payload)
-        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        #payload = {
+        #    'command': 'url_dispatch',
+        #    'source_id': self.uid,
+        #    'destination_id': destination_id,
+        #    'message': packet
+        #}
+        #jbody = json.dumps(payload)
+        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+
+        self.bus_access.send_message(
+            command = 'url_dispatch',
+            destination_id = destination_id,
+            message = packet,
+        )
 
     def get_remaining_url_count(self):
         """
@@ -232,11 +271,14 @@ class Dispatcher():
 
     def stop(self):
         self.exiting = True
-        self.reqchan.stop_consuming()
+        #self.reqchan.stop_consuming()
+        self.bus_access.stop_listening()
 
     # message handler
-    def _reqcallback(self,ch,method,properties,body):
-        response = json.loads(body)
+    def _reqcallback(self,payload): #ch,method,properties,body):
+        
+        response = payload #json.loads(body)
+        
         #print "Processing Message:\n\t{0}".format(response)
 
         if response['command'] == 'set_dispatcher_urls':

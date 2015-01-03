@@ -1,8 +1,14 @@
 from scraperwrapper import ScraperWrapper
 
-def StartScraper(exchange="barkingowl"):
-   sw = ScraperWrapper(exchange="barkingowl",DEBUG=True)
-   sw.start()
+def StartScraper(address='localhost',exchange='barkingowl'):
+    
+    sw = ScraperWrapper(
+        address = address,
+        exchange = exchange,
+        DEBUG=True,
+    )
+    
+    sw.start()
 
 if __name__ == '__main__':
 

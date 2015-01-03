@@ -4,15 +4,28 @@ import uuid
 
 class BusAccess(object):
 
-    def __init__(self,my_id,address="localhost",exchange="barkingowl",DEBUG=False):
+    def __init__(self,uid,address="localhost",exchange="barkingowl",
+            url_parameters=None, DEBUG=False):
 
         self.address = address
         self.exchange = exchange
-        self.my_id = my_id
+        self.uid = uid
+        self.url_parameters = url_parameters
         self.DEBUG = DEBUG
 
         # outgoing messages
-        self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
+
+        if url_parameters == None:
+            self.reqcon = pika.BlockingConnection(
+                pika.ConnectionParameters(
+                    host=address
+                )
+            )
+        else:
+            self.reqcon = pika.BlockingConnection(
+                self.url_parameters
+            )
+        
         self.reqchan = self.reqcon.channel()
         self.reqchan.exchange_declare(exchange=exchange,type='fanout')
         result = self.reqchan.queue_declare(exclusive=True)
@@ -21,14 +34,25 @@ class BusAccess(object):
         self.reqchan.basic_consume(self.req_callback,queue=queue_name,no_ack=True)
 
         # incoming messages
-        self.respcon = pika.BlockingConnection(pika.ConnectionParameters(host=self.address))
+        
+        if url_parameters == None:
+            self.respcon = pika.BlockingConnection(
+                pika.ConnectionParameters(host=self.address)
+            )
+        else:
+            self.respcon = pika.BlockingConnection(
+                self.url_parameters
+            )
+
         self.respchan = self.respcon.channel()
         self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
 
         self.callback = None
 
-        if self.DEBUG:
+        if self.DEBUG == True:
             print "BusAccess INIT Successfull."
+
+        print "self.DEBUG: {0}".format(self.DEBUG)
 
     def listen(self):
 
@@ -36,7 +60,7 @@ class BusAccess(object):
         Start listening on the message bus.
         """
 
-        if self.DEBUG:
+        if self.DEBUG == True:
             print "Listening on message bus ..."
 
         self.reqchan.start_consuming()
@@ -47,8 +71,11 @@ class BusAccess(object):
         Stops the pika listener on the message bus.
         """
 
-        if self.DEBUG:
+        if self.DEBUG == True:
             print "Halting listening on bus ..."
+
+        self.reqchan.basic_cancel(nowait=True)
+        self.reqchan.stop_consuming()
 
     def set_callback(self,callback):
 
@@ -58,7 +85,7 @@ class BusAccess(object):
 
         self.callback = callback
 
-        if self.DEBUG:
+        if self.DEBUG == True:
             print "Callback set."
 
     def send_message(self,command,destination_id,message):
@@ -184,19 +211,29 @@ class BusAccess(object):
 
         """
 
-        if self.DEBUG:
+        if self.DEBUG == True:
             print "Attempting to send message to bus ..."
 
         payload = {
             'command': command,
-            'source_id': self.my_id,
+            'source_id': self.uid,
             'destination_id': destination_id,
             'message': message,
         }
         jbody = json.dumps(payload)
-        self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
+        self.respchan.basic_publish(
+            exchange = self.exchange,
+            routing_key = '',
+            body = jbody,
+            mandatory = False,
+            immediate = False,
+        )
 
-        print "Message sent successfully to message bus."
+
+        if self.DEBUG == True:
+            print "Message sent successfully to message bus."
+            print payload
+            print ""
 
     def req_callback(self,ch,method,properties,body):
 
@@ -211,27 +248,27 @@ class BusAccess(object):
         if self.callback != None:
             self.callback(response)
 
-            if self.DEBUG:
+            if self.DEBUG == True:
                 print "Call back called successfully."
 
-def callback(payload):
+#def callback(payload):
+#
+#    print payload
 
-    print payload
-
-if __name__ == '__main__':
-
-    my_id = str(uuid.uuid4())
-    ba = BusAccess(
-        my_id = my_id,
-        address = "localhost",
-        exchange = "barkingowl",
-        DEBUG = True
-    )
-    
-    ba.set_callback(callback)
-
-    ba.send_message('*','broadcast',{'msg':'test'})
-
-    ba.listen()
+#if __name__ == '__main__':
+#
+#    uid = str(uuid.uuid4())
+#    ba = BusAccess(
+#        uid = uid,
+#        address = "localhost",
+#        exchange = "barkingowl",
+#        DEBUG = True
+	#    )
+#    
+#    ba.set_callback(callback)
+#
+#    ba.send_message('*','broadcast',{'msg':'test'})
+#
+#    ba.listen()
 
     

@@ -516,8 +516,8 @@ class Scraper(): #threading.Thread):
         ret_links = []
 
         log( 
-            "[{0}] find_all_docs(): Link Count: {1}, Bandwidth (bytes): {2}".format(
-                str(datetime.datetime.now()), len(self.status['processed_links']),self.status['bandwidth']
+            "find_all_docs(): Link Count: {1}, Bandwidth (bytes): {2}".format(
+                len(self.status['processed_links']),self.status['bandwidth']
             ),
             self.DEBUG,
         )

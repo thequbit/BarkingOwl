@@ -12,7 +12,7 @@ def StartScraper(address='localhost',exchange='barkingowl'):
 
 if __name__ == '__main__':
 
-    print "Starting BarkingOwl-Scraper."
+    #print "Starting BarkingOwl-Scraper."
 
     #try:
     if True:

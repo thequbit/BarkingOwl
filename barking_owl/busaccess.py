@@ -1,6 +1,12 @@
+import datetime
+
 import pika
 import json
 import uuid
+
+def log(text, DEBUG=False):
+    if DEBUG == True:
+        print "[{0}] {1}".format(str(datetime.datetime.now()),text)
 
 class BusAccess(object):
 
@@ -49,10 +55,7 @@ class BusAccess(object):
 
         self.callback = None
 
-        if self.DEBUG == True:
-            print "BusAccess INIT Successfull."
-
-        print "self.DEBUG: {0}".format(self.DEBUG)
+        log( "BusAccess.__init__(): BusAccess INIT Successfull.", self.DEBUG )
 
     def listen(self):
 
@@ -60,8 +63,7 @@ class BusAccess(object):
         Start listening on the message bus.
         """
 
-        if self.DEBUG == True:
-            print "Listening on message bus ..."
+        log( "BusAccess.listen(): Listening on message bus ...", self.DEBUG )
 
         self.reqchan.start_consuming()
 
@@ -71,8 +73,7 @@ class BusAccess(object):
         Stops the pika listener on the message bus.
         """
 
-        if self.DEBUG == True:
-            print "Halting listening on bus ..."
+        log( "BusAccess.stop_listening(): Halting listening on bus ...", self.DEBUG )
 
         self.reqchan.basic_cancel(nowait=True)
         self.reqchan.stop_consuming()
@@ -85,8 +86,7 @@ class BusAccess(object):
 
         self.callback = callback
 
-        if self.DEBUG == True:
-            print "Callback set."
+        log( "BusAccess.set_callback(): Callback set.", self.DEBUG )
 
     def send_message(self,command,destination_id,message):
         
@@ -211,8 +211,7 @@ class BusAccess(object):
 
         """
 
-        if self.DEBUG == True:
-            print "Attempting to send message to bus ..."
+        log( "BusAccess.send_message(): Attempting to send message to bus ...", self.DEBUG )
 
         payload = {
             'command': command,
@@ -229,11 +228,8 @@ class BusAccess(object):
             immediate = False,
         )
 
-
-        if self.DEBUG == True:
-            print "Message sent successfully to message bus."
-            print payload
-            print ""
+        log( "BusAccess.send_message(): Message sent successfully to message bus.", self.DEBUG )
+        log( "BusAccess.send_messsage(): payload: {0}".format(payload), self.DEBUG )
 
     def req_callback(self,ch,method,properties,body):
 
@@ -248,8 +244,7 @@ class BusAccess(object):
         if self.callback != None:
             self.callback(response)
 
-            if self.DEBUG == True:
-                print "Call back called successfully."
+            log( "BusAccess.req_callback(): Call back called successfully.", self.DEBUG )
 
 #def callback(payload):
 #

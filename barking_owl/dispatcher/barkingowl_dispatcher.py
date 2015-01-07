@@ -143,7 +143,7 @@ class Dispatcher():
         self.current_url_index = 0
 
         if self.DEBUG:
-            print "Updated ULR list with {0} URLs".format(len(self.urls))
+            print "Updated URL list with {0} URLs".format(len(self.urls))
 
         self.urls = urls
 
@@ -369,7 +369,8 @@ if __name__ == '__main__':
         DEBUG=True
     )
     
-    url = {'target_url': "http://timduffy.me/",
+    url = {
+           'target_url': "http://timduffy.me/",
            'title': "TimDuffy.Me",
            'description': "Tim Duffy's Personal Website",
            'max_link_level': -1,

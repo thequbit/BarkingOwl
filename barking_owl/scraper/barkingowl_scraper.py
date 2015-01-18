@@ -5,17 +5,18 @@ def StartScraper(address='localhost',exchange='barkingowl'):
     sw = ScraperWrapper(
         address = address,
         exchange = exchange,
-        DEBUG=True,
+        DEBUG = True,
     )
     
-    sw.start()
+    data = sw.start()
+
+    print data['documents']
 
 if __name__ == '__main__':
 
-    #print "Starting BarkingOwl-Scraper."
+    print "Launching BarkingOwl Scraper."
 
-    #try:
-    if True:
+    try:
         StartScraper()
-    #except:
-    #    print "Exiting BarkingOwl-Scraper."
+    except:
+        pass

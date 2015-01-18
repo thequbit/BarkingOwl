@@ -13,11 +13,14 @@ class Scraper(object):
 
     def __init__(self, file_header_size=1024, max_bandwidth=-1,
             max_memory=-1, DEBUG=False):
+
         self._reset_scraper()
 
         self.__file_header_size = file_header_size
         self.__max_bandwidth = max_bandwidth
         self.__max_memory = max_memory
+
+        self._DEBUG = DEBUG
 
         self._start_callback = None
         self._finished_callback = None
@@ -39,7 +42,7 @@ class Scraper(object):
         self._data['url_data'] = url_data
         self._data_loaded = True
 
-    def set_call_backs(self, start_callback=None, finished_callback=None, \
+    def set_callbacks(self, start_callback=None, finished_callback=None, \
             found_doc_callback=None, new_url_callback=None, \
             bandwidth_limit_callback=None, memory_limit_callback=None, \
             error_callback=None):
@@ -124,6 +127,7 @@ class Scraper(object):
     def start(self):
         if self._data_loaded == False:
             raise Exception("URL Data not set.")
+
         self._stopping = False
         self._data['working'] = True
         self._start()
@@ -132,12 +136,14 @@ class Scraper(object):
         stop_datetime = datetime.datetime.now()
         self._data['working'] = False
         self._stop()
-        self._data['elapsed_time'] = str(stop_datetime - start_datetime)
-        self._data['start_datetime'] = str(start_datetime)
-        self._data['stop_datetime'] = str(stop_datetime)
+        self._data['elapsed_time'] = (stop_datetime - start_datetime)
+        self._data['start_datetime'] = start_datetime
+        self._data['stop_datetime'] = stop_datetime
 
-        print json.dumps(self._data, sort_keys=True,
-            indent=4, separators=(',', ': '))
+        #print json.dumps(self._data, sort_keys=True,
+        #    indent=4, separators=(',', ': '))
+
+        return self._data
 
     def _find_documents(self):
         root_url = {
@@ -291,11 +297,12 @@ class Scraper(object):
             'type': document_type,
         })
         self._new_url(url)
-        print "Memory: {0} KB, Bandwidth: {1} Bytes, URL Count: {2}, Document Count: {3}, Ignored Count: {4}.".format(
-            resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
-            self._data['bandwidth'],
-            len(self._data['seen_urls']),
-            len(self._data['documents']),
-            self._data['ignored_count'],
-        )
+        if self._DEBUG == True:
+            print "Memory: {0} KB, Bandwidth: {1} Bytes, URL Count: {2}, Document Count: {3}, Ignored Count: {4}.".format(
+                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                self._data['bandwidth'],
+                len(self._data['seen_urls']),
+                len(self._data['documents']),
+                self._data['ignored_count'],
+            )
         return document_type

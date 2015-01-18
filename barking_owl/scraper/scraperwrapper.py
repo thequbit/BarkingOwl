@@ -37,7 +37,7 @@ class ScraperWrapper(threading.Thread):
 
         # create scraper instance
         self.scraper = Scraper(
-            uid=self.uid,
+            #uid=self.uid,
             DEBUG = self.DEBUG,
         )
         self.scraping = False
@@ -47,7 +47,6 @@ class ScraperWrapper(threading.Thread):
         self.stopped = False
 
         #setup message bus
-
         self.bus_access = BusAccess(
             uid = self.uid,
             address = self.address,
@@ -55,30 +54,9 @@ class ScraperWrapper(threading.Thread):
             url_parameters = self.url_parameters,
             DEBUG = self.DEBUG,
         )
-
         self.bus_access.set_callback(
             callback = self._reqcallback,
         )
-
-        #if self.url_parameters == None:
-        #    self.respcon = pika.BlockingConnection(
-        #        pika.ConnectionParameters(host=self.address)
-        #    )
-        #else:
-        #    self.respcon = pika.BlockingConnection(
-        #        self.url_parameters
-        #    )
-#
-#        self.respchan = self.respcon.channel()
-#        self.respchan.exchange_declare(exchange=self.exchange,type='fanout')
-#
-#        self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
-#        self.reqchan = self.reqcon.channel()
-#        self.reqchan.exchange_declare(exchange=exchange,type='fanout')
-#        result = self.reqchan.queue_declare(exclusive=True)
-#        queue_name = result.method.queue
-#        self.reqchan.queue_bind(exchange=exchange,queue=queue_name)
-#        self.reqchan.basic_consume(self._reqcallback,queue=queue_name,no_ack=True)
 
         # start our anouncement of availiability
         threading.Timer(self.interval, self.broadcast_available).start()
@@ -92,9 +70,19 @@ class ScraperWrapper(threading.Thread):
         sets up all of the call abcks needed, as well as begins consuming on the message bus. 
         """
         # setup call backs
-        self.scraper.set_finished_callback(self.scraper_finished_callback)
-        self.scraper.set_started_callback(self.scraper_started_callback)
-        self.scraper.set_broadcast_document_callback(self.scraper_broadcast_document_callback)
+        #self.scraper.set_finished_callback(self.scraper_finished_callback)
+        #self.scraper.set_started_callback(self.scraper_started_callback)
+        #self.scraper.set_broadcast_document_callback(self.scraper_broadcast_document_callback)
+
+        self.scraper.set_call_backs(
+            start_callback = self.scraper_started_callback,
+            finished_callback = self.scraper_finished_callback,
+            found_doc_callback = self.scraper_broadcast_document_callback,
+            new_url_callback = None,
+            bandwidth_limit_callback = None,
+            memory_limit_callback = None,
+            error_callback = None,
+        )
 
         # broadcast availability
         #self.broadcast_available()
@@ -112,7 +100,8 @@ class ScraperWrapper(threading.Thread):
         #self.reqchan.stop_consuming()
         self.bus_access.stop_listening()
 
-        self.scraper.stop_scraping()
+        #self.scraper.stop_scraping()
+        self.scraper.stop()
 
         self.stopped = True
 
@@ -130,20 +119,10 @@ class ScraperWrapper(threading.Thread):
         """
 
         # make sure we are not currently scraping
-        if self.scraper.status['busy'] == False:
-
+        if self.scraper._data['working'] == False:
             packet = {
                 'available_datetime': str(datetime.datetime.now())
             }
-            #payload = {
-            #    'command': 'scraper_available',
-            #    'source_id': self.uid,
-            #    'destination_id': 'broadcast',
-            #    'message': packet
-            #}
-            #jbody = json.dumps(payload)
-            #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
-
             self.bus_access.send_message(
                 command = 'scraper_available',
                 destination_id = 'broadcast',
@@ -207,28 +186,17 @@ class ScraperWrapper(threading.Thread):
 
         """
 
-        if self.scraper.status['url_data'] == {}:
-            targeturl = 'null'
+        if self.scraper._data['url_data'] == {}:
+            targeturl = None
         else:
-            targeturl = self.scraper.status['url_data']['target_url']
-
+            targeturl = self.scraper._data['url_data']['target_url']
         packet = {
-            'busy': self.scraper.status['busy'],
-            'link_count': self.scraper.status['link_count'],
-            'link_count': self.scraper.status['link_count'],
-            'bad_link_count': len(self.scraper.status['bad_links']),
+            'working': self.scraper._data['working'],
+            'url_count': len(self.scraper._data['seen_urls']),
+            'bad_url_count': len(self.scraper._data['bad_urls']),
             'target_url': targeturl,
             'status_datetime': str(datetime.datetime.now())
         }
-        #payload = {
-        #    'command': 'scraper_status_simple',
-        #    'source_id': self.uid,
-        #    'destination_id': 'broadcast',
-        #    'message': packet
-        #}
-        #jbody = json.dumps(payload)
-        #self.respchan.basic_publish(exchange=self.exchange,routing_key='',body=jbody)
-
         self.bus_access.send_message(
             command = 'scraper_available',
             destination_id = 'broadcast',
@@ -285,7 +253,7 @@ class ScraperWrapper(threading.Thread):
         #    self.scraper.start()
         #self.scraper.begin()
 
-        self.scraper.find_docs()
+        self.scraper.start()
 
     # message handler
     def _reqcallback(self,payload): #ch,method,properties,body):

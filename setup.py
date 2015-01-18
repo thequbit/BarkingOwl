@@ -11,7 +11,7 @@ For documentation checkout the github wiki:
 
 https://github.com/thequbit/BarkingOwl/wiki
 
-For a simple web frontend, check out backingowl-frontend:
+For a simple web frontend, check out barkingowl-frontend:
 
 https://github.com/thequbit/barkingowl-frontend
 

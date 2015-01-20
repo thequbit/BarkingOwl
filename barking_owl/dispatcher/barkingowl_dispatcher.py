@@ -11,7 +11,7 @@ def StartDispatcher():
     )
 
     url = {
-        'target_uerl': "http://timduffy.me/",
+        'target_url': "http://timduffy.me/",
         'doc_types': [
             'application/pdf',
         ],

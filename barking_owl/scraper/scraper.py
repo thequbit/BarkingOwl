@@ -71,7 +71,7 @@ class Scraper(object):
     def _found_doc(self, document_url):
         if not self._found_doc_callback == None:
             try:
-                self._found_doc_callback(self._data, document_url)
+                self._found_doc_callback(self._data, document_url['url'])
             except:
                 pass
 
@@ -199,8 +199,7 @@ class Scraper(object):
 
         page_urls = []
 
-        #try:
-        if True:
+        try:
 
             response = ''
             try:
@@ -208,6 +207,7 @@ class Scraper(object):
                 self._data['bandwidth'] += len(response.headers)
                 self._data['bandwidth'] += len(response.text)
             except:
+                raise Exception("Bad URL")
                 pass
 
             soup = BeautifulSoup(response.text)
@@ -257,8 +257,8 @@ class Scraper(object):
                     }
                     page_urls.append(url)
 
-        #except:
-        #    pass
+        except:
+            pass
 
         return page_urls
 

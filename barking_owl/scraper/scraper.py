@@ -31,14 +31,19 @@ class Scraper(object):
         self._error_callback = None
 
     def set_url_data(self, url_data):
-        if (not 'target_url' in url_data) or  \
-                (not 'doc_types' in url_data) or \
-                (not 'title' in url_data) or \
-                (not 'description' in url_data) or \
-                (not 'max_link_level' in url_data) or \
-                (not 'creation_datetime' in url_data) or \
-                (not 'allowed_domains' in url_data):
-            raise Exception("Invalid url_data payload.")
+        required = [
+            'target_url',
+            'doc_types',
+            'title',
+            'description',
+            'max_link_level',
+            'creation_datetime',
+            'allowed_domains',
+        ]
+        for key in required:
+            if key not in url_data:
+                raise Exception("Invalid url_data.  %r is required." % key)
+
         self._data['url_data'] = url_data
         self._data_loaded = True
 

@@ -19,9 +19,13 @@ def log(text, DEBUG=False):
 
 class ScraperWrapper(threading.Thread):
 
-    def __init__(self,address='localhost',exchange='barkingowl',
-            broadcast_interval=5,url_parameters=None, uid=str(uuid.uuid4()), \
-            ,DEBUG=False):
+    def __init__(self,
+                 address='localhost',
+                 exchange='barkingowl',
+                 broadcast_interval=5,
+                 url_parameters=None,
+                 uid=str(uuid.uuid4()),
+                 DEBUG=False):
 
         threading.Thread.__init__(self)
 

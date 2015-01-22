@@ -76,7 +76,7 @@ class Dispatcher():
     def start(self):
         if self._DEBUG == True:
             print "Starting to listen on message bus ..."
-        self.bus_access.listen()
+        #self.bus_access.start_listening()
 
     def broadcast_status(self):
         """
@@ -113,7 +113,9 @@ class Dispatcher():
         self.bus_access.stop_listening()
 
     def _reqcallback(self,payload):
-        try:
+        print "Dispatcher._reqcallback(): handling callback"
+        #try:
+        if True:
             response = payload
             if response['command'] == 'set_dispatcher_urls':
                 self.set_urls(response['message']['urls'])
@@ -127,6 +129,8 @@ class Dispatcher():
                         self.urls[i]['finish_datetime'] = now
 
             if response['command'] == 'scraper_available':
+                if self._DEBUG == True:
+                    print "Dispatcher._reqcallback(): Scraper availability seen"
                 if self.self_dispatch == True:
                     url_index = self.get_next_url_index()
                 else:
@@ -135,7 +139,7 @@ class Dispatcher():
                         url_index = self.current_url_index
                         self.current_url_index+=1
                 if not url_index == -1:
-                    if self.DEBUG == True:
+                    if self._DEBUG == True:
                         print "Dispatching URL"
                     self.urls[url_index]['start_datetime'] = str(datetime.datetime.now())
                     self.urls[url_index]['scraper_id'] = response['source_id']
@@ -146,5 +150,5 @@ class Dispatcher():
                 if self._DEBUG == True:
                     print "Exiting."
                 self.stop()
-        except Exception, e:
-            print "ERROR: {0}".format(str(e))
+        #except Exception, e:
+        #    print "ERROR: {0}".format(str(e))

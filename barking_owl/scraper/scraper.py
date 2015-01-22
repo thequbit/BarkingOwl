@@ -303,7 +303,7 @@ class Scraper(object):
         })
         self._new_url(url)
         if self._DEBUG == True:
-            print "Memory: {0} KB, Bandwidth: {1} Bytes, URL Count: {2}, Document Count: {3}, Ignored Count: {4}.".format(
+            print "Scraper: Bandwidth: {1} Bytes, URL Count: {2}, Document Count: {3}, Ignored Count: {4}.".format(
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
                 self._data['bandwidth'],
                 len(self._data['seen_urls']),

@@ -10,13 +10,15 @@ def StartScraper(address='localhost',exchange='barkingowl'):
     
     data = sw.start()
 
-    print data['documents']
+    if not data == None:
+        print data['documents']
 
 if __name__ == '__main__':
 
     print "Launching BarkingOwl Scraper."
 
-    try:
+    #try:
+    if True:
         StartScraper()
-    except:
-        pass
+    #except:
+    #    pass

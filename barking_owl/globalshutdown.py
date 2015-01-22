@@ -1,6 +1,7 @@
 import pika
 import json
 from time import strftime
+import datetime
 import uuid
 
 from barking_owl.busaccess import BusAccess
@@ -14,7 +15,7 @@ class GlobalShutdown():
         self.exchange = exchange
         self.uid = uid
         self.url_parameters = url_parameters        
-        self.DEBUG = DEBUG
+        self._DEBUG = DEBUG
 
         #setup message bus
         #self.reqcon = pika.BlockingConnection(pika.ConnectionParameters(host=address))
@@ -34,22 +35,31 @@ class GlobalShutdown():
             uid = self.uid,
             address = self.address,
             exchange = self.exchange,
+            heartbeat_interval = 30,
             url_parameters = self.url_parameters,
-            DEBUG = self.DEBUG,
+            DEBUG = self._DEBUG,
         )
 
         self.bus_access.set_callback(
             callback = self._reqcallback,
         )
 
+        self.bus_access.stop_listening()
+        #self.bus_access.tsleep(1)
+
+        if self._DEBUG == True:
+            print "GlobalShutdown.__init__(): init complete."
 
     def shutdown(self):
         """
         shutdown() sends the global shutdown command to the message bus.
         """
-        isodatetime = strftime("%Y-%m-%d %H:%M:%S")
-        packet = {
-            'availabledatetime': str(isodatetime)
+
+        if self._DEBUG == True:
+            print "GlobalShutdown.shutdown(): sending shutdown command" 
+
+        message = {
+            'shutdown_datetime': str(datetime.datetime.now())
         }
         #payload = {
         #    'command': 'global_shutdown',
@@ -63,8 +73,11 @@ class GlobalShutdown():
         self.bus_access.send_message(
             command = 'global_shutdown',
             destination_id = 'broadcast',
-            message = packet
+            message = message,
         )
+
+        if self._DEBUG == True:
+            print "GlobalShutdown.shutdown(): shutdown message sent successfully."
 
     def _reqcallback(self,payload): #ch,method,properties,body):
         pass
@@ -78,7 +91,7 @@ if __name__ == '__main__':
         exchange='barkingowl',
         #uid = ,
         #url_parameters = ,
-        #DEBUG = ,
+        DEBUG = True,
     )
 
     globalshutdown.shutdown()

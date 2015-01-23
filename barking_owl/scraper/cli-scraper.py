@@ -3,8 +3,11 @@ import datetime
 from optparse import OptionParser
 from scraper import Scraper
 
+_DEBUG = False
+
 def print_doc_info(_data, document_url):
-    print "    {0} : {1}".format(document_url['tag_text'], document_url['url'])
+    if _DEBUG == True:
+        print "    {0} : {1}".format(document_url['tag_text'], document_url['url'])
 
 if __name__ == '__main__':
 
@@ -31,11 +34,11 @@ if __name__ == '__main__':
             not options.max_link_level == None and \
             not options.json_output == '' and not options.json_output == None:
 
-        DEBUG = False
+        #DEBUG = False
         if options.json_output == False:
-            DEBUG = True
+            _DEBUG = True
 
-        if DEBUG == True:
+        if _DEBUG == True:
             print " -- CLI BarkingOwl Scraper -- "
 
         url = {
@@ -53,19 +56,19 @@ if __name__ == '__main__':
 
         #try:
         if True:
-            scraper = Scraper()
+            scraper = Scraper(DEBUG=False)
             scraper.set_callbacks(
                 found_doc_callback = print_doc_info,
             )
             scraper.set_url_data(url)
 
-            if DEBUG == True:
+            if _DEBUG == True:
                 print "\nStarting Scraper on {0} ...\n\n".format(options.target_url)
             data = scraper.start()
-            if DEBUG == True:
+            if _DEBUG == True:
                 print "\n\nScraper complete.\n"
 
-            if DEBUG == True:
+            if _DEBUG == True:
                 print "BarkingOwl Scraper found {0} documents on {1}.\n\n".format(
                     len(data['documents']),
                     options.target_url,

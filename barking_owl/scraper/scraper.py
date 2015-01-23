@@ -117,6 +117,7 @@ class Scraper(object):
         self._data['bad_urls'] = []
         self._data['documents'] = []
         self._data['file_header_size'] = 1024 
+        self._data['max_type_try_count'] = 4
         self._data['url_data'] = {}
         self._data['working'] = False
         self._data['elapsed_time'] = None
@@ -191,7 +192,6 @@ class Scraper(object):
                             }
                             self._data['documents'].append(new_doc)
                             self._found_doc(new_doc)
-
                 else:
                     self._data['ignored_count'] += 1
             success = self._process_urls(page_urls)
@@ -279,23 +279,58 @@ class Scraper(object):
         return match
 
     def _type_document(self, url):
+        #if self._DEBUG:
+        #    print "----------------"
+        header_size = 0
+        try_count = 0
         document_type = None
         for seen_url in self._data['seen_urls']:
             if url['url'] == seen_url:
                 document_type = seen_url['type']
-        if document_type == None:
-            req = urllib2.Request(url['url'], headers={'Range':"byte=0-{0}".format(
-                self._data['file_header_size'])}
-            )
-            try:
-                open_url = urllib2.urlopen(req,timeout=5)
-                headers = open_url.info()
-                payload = open_url.read(
-                    self._data['file_header_size']
-                )
-                self._data['bandwidth'] += ( len(headers) + len(payload) )
-                document_type = magic.from_buffer(payload, mime=True) 
-            except:
+                #if self._DEBUG:
+                #    print "Scraper._type_document(): link already seen, skipping download."
+        if document_type == None and not url['url'] in self._data['bad_urls']:
+            error_on_get = False
+            while document_type == None and \
+                    try_count < (self._data['max_type_try_count'] + 1):
+
+                if try_count == self._data['max_type_try_count']:
+                    # if we've tried the max number of times, then just downlaod
+                    # the entire file to type it
+                    req = urllib2.Request(url['url'])
+                    #if self._DEBUG == True:
+                    #    print "Scraper._type_document(): Downloading entire file ..."
+                else:
+                    header_size += self._data['file_header_size']
+                    req = urllib2.Request(url['url'], headers={'Range':"byte=0-{0}".format(
+                        header_size)}
+                    )
+                    #if self._DEBUG == True:
+                    #    print "Scraper._type_document(): Downloading {0} bytes ...".format(header_size)
+
+                headers = None
+                try:
+                    open_url = urllib2.urlopen(req,timeout=5)
+                    headers = open_url.info()
+                    payload = open_url.read(
+                        self._data['file_header_size']
+                    )
+                    self._data['bandwidth'] += ( len(headers) + len(payload) )
+                    document_type = magic.from_buffer(payload, mime=True)
+                    #error_on_get = False
+                except Exception, e:
+                    #if self._DEBUG == True:
+                        #print "Scraper._type_document(): saw an error: {0}".format(e)
+                        #print "  URL: {0}".format(url['url'])
+                        if headers != None:
+                            print "  Headers: {0}".format(headers)
+                    #if not url['url'] in self._data['bad_urls']:
+                    #    self._data['bad_urls'].append(url['url'])
+                    #error_on_get = True
+                try_count += 1
+                #print "Scraper._type_document(): document_type: {0}, try_count: {1}".format(document_type, try_count)
+        if document_type == None and error_on_get == True:
+            if not url['url'] in self._data['bad_urls']:
                 self._data['bad_urls'].append(url['url'])
         self._data['seen_urls'].append({
             'url': url['url'],
@@ -303,11 +338,14 @@ class Scraper(object):
         })
         self._new_url(url)
         if self._DEBUG == True:
-            print "Scraper: Bandwidth: {1} Bytes, URL Count: {2}, Document Count: {3}, Ignored Count: {4}.".format(
+            print "{0} : {1}".format(document_type, url['url'])
+            print "Scraper: Bandwidth: {1} Bytes, URL Count: {2}, Document Count: {3}, Ignored Count: {4}, Try Count: {5}.".format(
                 resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
                 self._data['bandwidth'],
                 len(self._data['seen_urls']),
                 len(self._data['documents']),
                 self._data['ignored_count'],
+                try_count,
             )
+            print "\n"
         return document_type

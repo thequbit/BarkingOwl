@@ -19,7 +19,7 @@ https://github.com/thequbit/barkingowl-frontend
 
 setup(
     name="BarkingOwl",
-    version="0.6.0",
+    version="0.6.1.1",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",

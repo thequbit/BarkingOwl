@@ -9,16 +9,23 @@ import requests
 import magic
 import json
 
+VERSION = "v0.6.3"
+
 class Scraper(object):
 
-    def __init__(self, file_header_size=1024, max_bandwidth=-1,
-            max_memory=-1, DEBUG=False):
+    def __init__(self,
+                 file_header_size=1024,
+                 max_bandwidth=-1,
+                 max_memory=-1,
+                 user_agent="BarkingOwl Scraper/%s" % VERSION,
+                 DEBUG=False):
 
         self._reset_scraper()
 
         self.__file_header_size = file_header_size
         self.__max_bandwidth = max_bandwidth
         self.__max_memory = max_memory
+        self.__user_agent = user_agent
 
         self._DEBUG = DEBUG
 
@@ -212,7 +219,10 @@ class Scraper(object):
 
             response = ''
             try:
-                response = requests.get(target_url['url'])
+                headers = {
+                    'User-Agent': '%s (getting urls)' % self.__user_agent,
+                }
+                response = requests.get(target_url['url'], headers=headers)
                 self._data['bandwidth'] += len(response.headers)
                 self._data['bandwidth'] += len(response.text)
             except:
@@ -303,9 +313,11 @@ class Scraper(object):
                     req = urllib2.Request(url['url'])
                 else:
                     header_size += self._data['file_header_size']
-                    req = urllib2.Request(url['url'], headers={'Range':"byte=0-{0}".format(
-                        header_size)}
-                    )
+                    headers = {
+                        'Range': 'byte=0-%i' % header_size,
+                        'User-Agent': '%s (typing link)' % self.__user_agent,
+                    }
+                    req = urllib2.Request(url['url'], headers=headers)
                 try:
                     open_url = urllib2.urlopen(req,timeout=5)
                     headers = open_url.info()
@@ -327,13 +339,14 @@ class Scraper(object):
         self._new_url(url)
         if self._DEBUG == True:
             print "{0} : {1}".format(document_type, url['url'])
-            print "Scraper: Bandwidth: {1} Bytes, URL Count: {2}, Document Count: {3}, Ignored Count: {4}, Try Count: {5}.".format(
-                resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
-                self._data['bandwidth'],
-                len(self._data['seen_urls']),
-                len(self._data['documents']),
-                self._data['ignored_count'],
-                try_count,
-            )
+            print ("Scraper: Bandwidth: {1} Bytes, URL Count: {2}, " \
+                "Document Count: {3}, Ignored Count: {4}, Try Count: {5}.".format(
+                    resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                    self._data['bandwidth'],
+                    len(self._data['seen_urls']),
+                    len(self._data['documents']),
+                    self._data['ignored_count'],
+                    try_count,
+                ))
             print "\n"
         return document_type

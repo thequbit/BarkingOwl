@@ -22,6 +22,7 @@ def StartDispatcher():
         'allowed_domains': [
 
         ],
+        'sleep_time': 1, # 1 secon
     }
 
     urls = []

@@ -39,6 +39,7 @@ class Scraper(object):
             'max_link_level',
             'creation_datetime',
             'allowed_domains',
+            'sleep_time',
         ]
         for key in required:
             if key not in url_data:
@@ -206,6 +207,9 @@ class Scraper(object):
 
         try:
 
+            if self._data['url_data']['sleep_time'] > 0:
+                time.sleep(self._data['url_data']['sleep_time'])
+
             response = ''
             try:
                 response = requests.get(target_url['url'])
@@ -289,6 +293,9 @@ class Scraper(object):
             error_on_get = False
             while document_type == None and \
                     try_count < (self._data['max_type_try_count'] + 1):
+
+                if self._data['url_data']['sleep_time'] > 0:
+                    time.sleep(self._data['url_data']['sleep_time'])
 
                 if try_count == self._data['max_type_try_count']:
                     # if we've tried the max number of times, then just downlaod

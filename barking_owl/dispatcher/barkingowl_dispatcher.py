@@ -14,6 +14,7 @@ def StartDispatcher():
         'target_url': "http://timduffy.me/",
         'doc_types': [
             'application/pdf',
+            #'*',
         ],
         'title': "TimDuffy.Me",
         'description': "Tim Duffy's Personal Website",

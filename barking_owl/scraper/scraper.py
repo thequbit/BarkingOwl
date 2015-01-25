@@ -9,7 +9,7 @@ import requests
 import magic
 import json
 
-VERSION = "v0.6.3"
+VERSION = "v0.6.4"
 
 class Scraper(object):
 
@@ -190,8 +190,9 @@ class Scraper(object):
                         not any(seen_url['url'] == page_url['url'] \
                         for seen_url in self._data['seen_urls']):
                     doc_type = self._type_document(page_url)
-                    if doc_type != '' and \
-                            doc_type in self._data['url_data']['doc_types']:
+                    if '*' in self._data['url_data']['doc_types'] or \
+                            (doc_type != '' and \
+                            doc_type in self._data['url_data']['doc_types']):
                         if not any(doc['url'] == page_url \
                                 for doc in self._data['documents']):
                             new_doc = {

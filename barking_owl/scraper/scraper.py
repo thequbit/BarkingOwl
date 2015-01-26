@@ -9,7 +9,7 @@ import requests
 import magic
 import json
 
-VERSION = "v0.6.4"
+VERSION = "v0.6.4.1"
 
 class Scraper(object):
 

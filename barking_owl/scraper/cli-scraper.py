@@ -52,11 +52,12 @@ if __name__ == '__main__':
             'creation_datetime': str(datetime.datetime.now()),
             'allowed_domains': [
             ],
+            'sleep_time': 0, # do not sleep between URL fetches
         }
 
         #try:
         if True:
-            scraper = Scraper(DEBUG=False)
+            scraper = Scraper(DEBUG=_DEBUG)
             scraper.set_callbacks(
                 found_doc_callback = print_doc_info,
             )

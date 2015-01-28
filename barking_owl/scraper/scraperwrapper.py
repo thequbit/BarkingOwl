@@ -78,14 +78,9 @@ class ScraperWrapper(object): #threading.Thread):
             memory_limit_callback = None,
             error_callback = None,
         )
-        #self.bus_access.listen()
-
-        #while not self.stopped:
 
         self.broadcast_status()
 
-        #self.bus_access.sleep(self.broadcast_interval)
-   
     def stop(self):
         self.bus_access.stop_listening()
         self.scraper.stop()
@@ -130,18 +125,6 @@ class ScraperWrapper(object): #threading.Thread):
                 #threading.Timer(self.interval, self.broadcast_available).start()
                 self.bus_access.tsleep(self.broadcast_interval)
 
-#    def broadcast_status(self):
-#        packet = {
-#            'status': self.scraper.status,
-#            'url_data': self.status['url_data'],
-#            'status_datetime': str(datetime.datetime.now())
-#        }
-#        self.bus_access.send_message(
-#            command = 'scraper_status',
-#            destination_id = 'broadcast',
-#            message = packet,
-#        )
-
     def broadcast_simple_status(self):
         if self.scraper._data['url_data'] == {}:
             targeturl = None
@@ -160,25 +143,25 @@ class ScraperWrapper(object): #threading.Thread):
             message = packet,
         )
 
-    def scraper_finished_callback(self,payload):
+    def scraper_finished_callback(self, _data):
         self.bus_access.send_message(
-            command = payload['command'],
-            destination_id = payload['destination_id'],
-            message = payload['message'],
+            command = 'scraper_finished',
+            destination_id = 'broadcast',
+            message = _data,
         )
 
-    def scraper_started_callback(self,payload):
+    def scraper_started_callback(self, _data):
         self.bus_access.send_message(
-            command = payload['command'],
-            destination_id = payload['destination_id'],
-            message = payload['message'],
+            command = 'scraper_started',
+            destination_id = 'broadcast',
+            message = _data,
         )
 
-    def scraper_broadcast_document_callback(self,payload):
+    def scraper_broadcast_document_callback(self, _data, document):
         self.bus_access.send_message(
-            command = payload['command'],
-            destination_id = payload['destination_id'],
-            message = payload['message'],
+            command = 'scraper_found_document', #payload['command'],
+            destination_id = 'broadcast', #payload['destination_id'],
+            message = document, #payload['message'],
         )
 
     def _scraperstart(self):
@@ -208,15 +191,15 @@ class ScraperWrapper(object): #threading.Thread):
                         #self._scraperstart()
                         #log( "ScraperWrapper._reqcallback(): ... Scraper launched successfully.", self.DEBUG )
 
-            elif response['command'] == 'scraper_finished':
-                if response['source_id'] == self.scraper.uid:
-                    self.scraping = False
+            #elif response['command'] == 'scraper_finished':
+            #    if response['source_id'] == self.scraper.uid:
+            #        self.scraping = False
 
             elif response['command'] == 'get_status':
-                self.broadcaststatus()
+                self.broadcast_status()
 
             elif response['command'] == 'get_status_simple':
-                self.broadcastsimplestatus()
+                self.broadcast_simple_status()
 
             elif response['command'] == 'reset_scraper':
                 if response['destination_id'] == self.uid:
@@ -231,4 +214,4 @@ class ScraperWrapper(object): #threading.Thread):
                 #log( "ScraperWrapper._reqcallback(): Global Shutdown Recieved", self.DEBUG )
                 self.stop()
         except Exception, e:
-            print "ERROR: {0}".format(str(e))
+            print "ScraperWrapper._reqcallback(): ERROR: {0}".format(str(e))

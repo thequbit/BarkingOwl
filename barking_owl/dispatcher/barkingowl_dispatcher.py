@@ -5,8 +5,10 @@ from dispatcher import Dispatcher
 
 def StartDispatcher():
 
-    with daemon.DaemonContext():
-        try:
+    #with daemon.DaemonContext():
+    #    try:
+    if True:
+        if True:
             dispatcher = Dispatcher(
                 address='localhost',
                 exchange='barkingowl',
@@ -32,13 +34,17 @@ def StartDispatcher():
             urls = []
             urls.append(url)
 
+            print "Seting URLs ..."
             dispatcher.set_urls(urls)
+            print "Done."
 
             # note: blocking
+            print "Starting dispatcher ..."
             dispatcher.start()
+            print "Done."
 
-        except Exception, e:
-            print "Error: {0}".format(e)
+        #except Exception, e:
+        #    print "Error: {0}".format(e)
 
 if __name__ == '__main__':
 

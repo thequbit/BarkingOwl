@@ -85,8 +85,8 @@ class Scraper(object):
         if not self._found_doc_callback == None:
             try:
                 self._found_doc_callback(self._data, document_url['url'])
-            except:
-                pass
+            except Exception, e:
+                print "Scraper._found_doc(): ERROR: {0}".format(e)
 
     def _new_url(self, url):
         if not self._new_url_callback == None:
@@ -139,6 +139,10 @@ class Scraper(object):
         self._stopping = True
         
     def start(self):
+        
+        if self._DEBUG == True:
+            print "Starting scraper ..."        
+
         if self._data_loaded == False:
             raise Exception("URL Data not set.")
 

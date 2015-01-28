@@ -4,7 +4,8 @@ from scraperwrapper import ScraperWrapper
 
 def StartScraper(address='localhost',exchange='barkingowl'):
     
-    with daemon.DaemonContext():
+    #with daemon.DaemonContext():
+    if True:
         try: 
             sw = ScraperWrapper(
                 address = address,

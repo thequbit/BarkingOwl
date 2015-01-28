@@ -84,14 +84,18 @@ class ReceiveThread(threading.Thread):
             print  "BusAccess.ReceiveThread._req_callback(): error: {0}".format(e)
 
     def stop_listening(self):
-        if self._DEBUG == True:
-            print "ReceiveThread.stop_listening(): Stopping message consuming ..."
-        self.reqchan.basic_cancel(nowait=True)
-        self.reqchan.stop_consuming()
-        #self.reqcon.close()
-        if self._DEBUG == True:
-            print "ReceiveThread.stop_listening(): Message consuming stopped." 
+        try:
+            if self._DEBUG == True:
+                print "ReceiveThread.stop_listening(): Stopping message consuming ..."
+            self.reqchan.basic_cancel(nowait=True)
+            self.reqchan.stop_consuming()
+            #self.reqcon.close()
+            if self._DEBUG == True:
+                print "ReceiveThread.stop_listening(): Message consuming stopped." 
 
+        except Exception, e:
+            if self._DEBUG == True:
+                print "ReceiveThread.stop_listening(): ERROR: {0}".format(e)
     def sleep(self, duration):
         if not self.reqchan == None:
             if self._DEBUG == True:
@@ -172,9 +176,9 @@ class TransmitThread(threading.Thread):
                 print "BusAccess.send_message(): Message sent successfully to message bus."
                 #print "BusAccess.send_messsage(): payload: {0}".format(payload)
             success = True
-        except:
+        except Exception, e:
             if self._DEBUG == True:
-                print "BusAccess.TransmitThread.send_message(): Error sending message"
+                print "BusAccess.TransmitThread.send_message(): ERROR: {0}".format(e)
 
     def sleep(self, duration):
         if not self.respchan == None:
@@ -242,7 +246,6 @@ class BusAccess(object):
 
     def set_callback(self, callback):
         self._receive_thread.set_callback(callback)
-        #pass
 
     def send_message(self, command, destination_id, message):
         self._transmit_thread.send_message(command, destination_id, message) 

@@ -7,6 +7,8 @@ import time
 
 import threading
 
+import traceback
+
 class ReceiveThread(threading.Thread):
 
     def __init__(self,
@@ -65,8 +67,12 @@ class ReceiveThread(threading.Thread):
             no_ack=True
         )
 
+        #self.sleep(5)
+
         if self._DEBUG == True:
-            print "ReceiveThread.run(): starting message consuming ..."
+            print "BusAccess.ReceiveThread.run(): starting message consuming ..."
+
+        self._sleeping = False
 
         self.consuming = True
 
@@ -86,21 +92,26 @@ class ReceiveThread(threading.Thread):
     def stop_listening(self):
         try:
             if self._DEBUG == True:
-                print "ReceiveThread.stop_listening(): Stopping message consuming ..."
+                print "BusAccess.ReceiveThread.stop_listening(): Stopping message consuming ..."
             self.reqchan.basic_cancel(nowait=True)
             self.reqchan.stop_consuming()
             #self.reqcon.close()
             if self._DEBUG == True:
-                print "ReceiveThread.stop_listening(): Message consuming stopped." 
+                print "BusAccess.ReceiveThread.stop_listening(): Message consuming stopped." 
 
         except Exception, e:
             if self._DEBUG == True:
-                print "ReceiveThread.stop_listening(): ERROR: {0}".format(e)
+                print "BusAccess.ReceiveThread.stop_listening(): ERROR: {0}".format(e)
     def sleep(self, duration):
         if not self.reqchan == None:
             if self._DEBUG == True:
-                print "ReceiveThread.sleep(): Sleeping ..."
+                print "BusAccess.ReceiveThread.sleep(): Sleeping ..."
+            self._sleeping = True
             self.reqcon.sleep(duration)
+            self._sleeping = False
+
+    def is_sleeping(self):
+        return self._sleeping
 
     def ready(self):
         _ready = False
@@ -145,12 +156,19 @@ class TransmitThread(threading.Thread):
                 self.url_parameters
             )
         self.respchan = self.respcon.channel()
+        self.respchan.confirm_delivery()
         self.respchan.exchange_declare(
             exchange=self.exchange,
             type='fanout'
         )
 
+        #self.sleep(5)
+
+        self._sleeping = False
         self._started = True
+
+        if self._DEBUG == True:
+            print "BusAccess.TransmitThread: Ready!"
 
     def send_message(self, command, destination_id, message):
         if self._started == False:
@@ -165,11 +183,17 @@ class TransmitThread(threading.Thread):
                 'message': message,
             }
             jbody = json.dumps(payload)
+
+            # some odd stuff happens if we don't do this ... like
+            # functions within pika not resolving ...
+            while self._sleeping:
+                continue
+
             self.respchan.basic_publish(
                 exchange = self.exchange,
                 routing_key = '',
                 body = jbody,
-                mandatory = False,
+                #mandatory = False,
                 immediate = False,
             )
             if self._DEBUG == True:
@@ -179,12 +203,19 @@ class TransmitThread(threading.Thread):
         except Exception, e:
             if self._DEBUG == True:
                 print "BusAccess.TransmitThread.send_message(): ERROR: {0}".format(e)
+                print traceback.format_exc()
+                print "BusAccess.TransmitThread.send_message(): Error Payload Command: {0}".format(command)
 
     def sleep(self, duration):
         if not self.respchan == None:
             if self._DEBUG == True:
-                print "TransmitThread.sleep(): Sleeping ..."
+                print "BusAccess.TransmitThread.sleep(): Sleeping ..."
+            self._sleeping = True
             self.respcon.sleep(duration)
+            self._sleeping = False
+
+    def is_sleeping(self):
+        return self._sleeping
 
     def ready(self):
         return self._started

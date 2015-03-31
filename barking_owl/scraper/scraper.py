@@ -1,6 +1,6 @@
 import datetime
 import time
-import resource
+#import resource
 import urllib2
 import urlparse
 from bs4 import BeautifulSoup
@@ -9,7 +9,9 @@ import requests
 import magic
 import json
 
-VERSION = "v0.6.4.1"
+import traceback
+
+VERSION = "v0.7.0"
 
 class Scraper(object):
 
@@ -73,6 +75,7 @@ class Scraper(object):
             try:
                 self._start_callback(self._data)
             except:
+                print traceback.format_exc()
                 pass
 
     def _stop(self):
@@ -80,6 +83,7 @@ class Scraper(object):
             try:
                 self._finished_callback(self._data)
             except:
+                print traceback.format_exc()
                 pass
     def _found_doc(self, document_url):
         if not self._found_doc_callback == None:
@@ -93,6 +97,7 @@ class Scraper(object):
             try:
                 self._new_url_callback(self._data, url)
             except:
+                print traceback.format_exc()
                 pass
 
     def _bandwidth_limit(self):
@@ -100,6 +105,7 @@ class Scraper(object):
             try:
                 self._bandwidth_limit_callback(self._data)
             except:
+                print traceback.format_exc()
                 pass
 
     def _memory_limit(self):
@@ -107,6 +113,7 @@ class Scraper(object):
             try:
                 self._memory_limit_callback(self._data)
             except:
+                print traceback.format_exc()
                 pass
 
     def _error(self, error_text):
@@ -114,6 +121,7 @@ class Scraper(object):
             try:
                 self._error_callback(self._data, error_text)
             except:
+                print traceback.format_exc()
                 pass
 
     def _reset_scraper(self):
@@ -282,6 +290,7 @@ class Scraper(object):
                     page_urls.append(url)
 
         except:
+            print traceback.format_exc()
             pass
 
         return page_urls
@@ -346,7 +355,7 @@ class Scraper(object):
             print "{0} : {1}".format(document_type, url['url'])
             print ("Scraper: Bandwidth: {1} Bytes, URL Count: {2}, " \
                 "Document Count: {3}, Ignored Count: {4}, Try Count: {5}.".format(
-                    resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                    None, #resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
                     self._data['bandwidth'],
                     len(self._data['seen_urls']),
                     len(self._data['documents']),

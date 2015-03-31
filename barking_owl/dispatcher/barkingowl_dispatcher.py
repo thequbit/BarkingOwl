@@ -17,13 +17,17 @@ def StartDispatcher():
             )
 
             url = {
-                'target_url': "http://timduffy.me/",
+                #'target_url': "http://timduffy.me/",
+                'target_url': "http://henrietta.org/",
                 'doc_types': [
-                'application/pdf',
-                    #'*',
+                    #'application/pdf',
+                    '*',
                 ],
-                'title': "TimDuffy.Me",
-                'description': "Tim Duffy's Personal Website",
+                #'title': "TimDuffy.Me",
+                'title': 'Town of Henrietta, NY',
+                #'description': "Tim Duffy's Personal Website",
+                'description': "Town of Henrietta, NY Website.",
+                #'max_link_level': 1,
                 'max_link_level': 1,
                 'creation_datetime': str(datetime.datetime.now()),
                 'allowed_domains': [

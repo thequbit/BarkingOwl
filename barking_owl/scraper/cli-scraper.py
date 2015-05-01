@@ -34,7 +34,6 @@ if __name__ == '__main__':
             not options.max_link_level == None and \
             not options.json_output == '' and not options.json_output == None:
 
-        #DEBUG = False
         if options.json_output == False:
             _DEBUG = True
 

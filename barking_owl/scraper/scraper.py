@@ -1,6 +1,7 @@
 import datetime
 import time
 #import resource
+import urllib
 import urllib2
 import urlparse
 from bs4 import BeautifulSoup
@@ -11,7 +12,7 @@ import json
 
 import traceback
 
-VERSION = "v0.7.0"
+VERSION = "v0.7.1"
 
 class Scraper(object):
 
@@ -341,6 +342,9 @@ class Scraper(object):
                     self._data['bandwidth'] += ( len(headers) + len(payload) )
                     document_type = magic.from_buffer(payload, mime=True)
                 except Exception, e:
+                    print 'Exception: {0}'.format(e)
+                    if '../' in url['url']:
+                        url['url'] = url['url'].replace('../','',1)
                     # if this is our last try, and there was an error record the URL as 'bad'
                     if try_count == self._data['max_type_try_count']:
                         if not url['url'] in self._data['bad_urls']:

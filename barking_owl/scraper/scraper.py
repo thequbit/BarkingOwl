@@ -12,7 +12,7 @@ import json
 
 import traceback
 
-VERSION = "v0.7.1"
+VERSION = "v0.7.2"
 
 class Scraper(object):
 
@@ -307,6 +307,13 @@ class Scraper(object):
             match = True
         return match
 
+    def _url_quote(self, url):
+        #scheme = urlparse.urlsplit(url).scheme
+        #rest = url.replace('%s://' % scheme, '', 1)
+        #quoted = '%s://%s' % (rest, urllib.quote(rest))
+        quoted = url.replace(' ','%20')
+        return quoted
+
     def _type_document(self, url):
         header_size = 0
         try_count = 0
@@ -322,17 +329,19 @@ class Scraper(object):
                 if self._data['url_data']['sleep_time'] > 0:
                     time.sleep(self._data['url_data']['sleep_time'])
 
+                quoted = self._url_quote(url['url'])
+
                 if try_count == self._data['max_type_try_count']:
                     # if we've tried the max number of times, then just downlaod
                     # the entire file to type it
-                    req = urllib2.Request(url['url'])
+                    req = urllib2.Request(quoted)
                 else:
                     header_size += self._data['file_header_size']
                     headers = {
                         'Range': 'byte=0-%i' % header_size,
                         'User-Agent': '%s (typing link)' % self.__user_agent,
                     }
-                    req = urllib2.Request(url['url'], headers=headers)
+                    req = urllib2.Request(quoted, headers=headers)
                 try:
                     open_url = urllib2.urlopen(req,timeout=5)
                     headers = open_url.info()

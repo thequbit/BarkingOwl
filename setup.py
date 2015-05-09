@@ -33,7 +33,7 @@ setup(
       "beautifulsoup4==4.3.2",
       "libmagic==1.0",
       "pika==0.9.14",
-      "sqlalchemy=1.0.3",
+      "sqlalchemy==1.0.3",
       "python-magic==0.4.6",
       "six==1.5.2",
       "wsgiref==0.1.2",

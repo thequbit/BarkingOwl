@@ -7,7 +7,7 @@ _DEBUG = False
 
 def print_doc_info(_data, document_url):
     if _DEBUG == True:
-        print "    {0} : {1}".format(document_url['tag_text'], document_url['url'])
+        print "    New Document: {0} : {1}\n".format(document_url['tag_text'], document_url['url'])
 
 if __name__ == '__main__':
 
@@ -22,6 +22,12 @@ if __name__ == '__main__':
     parser.add_option("-l", "--max-link-level", dest="max_link_level",
         help="Maximum links to follow.", metavar="MAXLEVEL")
 
+    parser.add_option("-m", "--tracking-method", dest="tracking_method",
+        help="URL Tracking Method (dict, sql, mongo)", metavar="METHOD")
+
+    parser.add_option("-i", "--uri", dest="uri",
+        help="URI for Tracking Method (optional)", metavar="URI")
+
     parser.add_option("-j", "--json-output", action="store_true", 
         dest="json_output", help="Produce Pretty JSON output.", 
         default=False)
@@ -32,6 +38,8 @@ if __name__ == '__main__':
             not options.doc_type == '' and not options.doc_type == None and \
             not options.max_link_level == '' and \
             not options.max_link_level == None and \
+            not options.tracking_method == '' and \
+            not options.tracking_method == None and \
             not options.json_output == '' and not options.json_output == None:
 
         if options.json_output == False:
@@ -56,7 +64,11 @@ if __name__ == '__main__':
 
         #try:
         if True:
-            scraper = Scraper(DEBUG=_DEBUG)
+            scraper = Scraper(
+                check_type=options.tracking_method,
+                check_type_uri=options.uri,
+                DEBUG=_DEBUG,
+            )
             scraper.set_callbacks(
                 found_doc_callback = print_doc_info,
             )

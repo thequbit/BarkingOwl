@@ -19,7 +19,7 @@ https://github.com/thequbit/barkingowl-frontend
 
 setup(
     name="BarkingOwl",
-    version="0.7.2",
+    version="0.8.0",
     license="GPL3",
     author="Timothy Duffy",
     author_email="tim@timduffy.me",
@@ -33,7 +33,7 @@ setup(
       "beautifulsoup4==4.3.2",
       "libmagic==1.0",
       "pika==0.9.14",
-      #"python-dateutil==2.2",
+      "sqlalchemy=1.0.3",
       "python-magic==0.4.6",
       "six==1.5.2",
       "wsgiref==0.1.2",

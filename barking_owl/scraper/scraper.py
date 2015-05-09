@@ -9,10 +9,10 @@ import tldextract
 import requests
 import magic
 import json
-
+from interface import URLCheck
 import traceback
 
-VERSION = "v0.7.2"
+VERSION = "v0.8.0"
 
 class Scraper(object):
 
@@ -20,14 +20,23 @@ class Scraper(object):
                  file_header_size=1024,
                  max_bandwidth=-1,
                  max_memory=-1,
+                 check_type='dict',
+                 check_type_uri=None,
                  user_agent="BarkingOwl Scraper/%s" % VERSION,
                  DEBUG=False):
 
         self._reset_scraper()
 
+        self._urlcheck = URLCheck(
+            check_type=check_type,
+            uri=check_type_uri,
+            DEBUG=DEBUG,
+        )
+
         self.__file_header_size = file_header_size
         self.__max_bandwidth = max_bandwidth
         self.__max_memory = max_memory
+        #self.__seen_method = check_type
         self.__user_agent = user_agent
 
         self._DEBUG = DEBUG
@@ -127,7 +136,7 @@ class Scraper(object):
 
     def _reset_scraper(self):
         self._data = {}
-        self._data['seen_urls']  = []
+        #self._data['seen_urls']  = []
         self._data['bandwidth'] = 0
         self._data['ignored_count'] = 0
         self._data['link_level'] = 1
@@ -144,6 +153,9 @@ class Scraper(object):
         self._stopping = False
         self._data_loaded = False
 
+    def _init_sqlite():
+        pass
+
     def stop(self):
         self._stopping = True
         
@@ -155,6 +167,10 @@ class Scraper(object):
         if self._data_loaded == False:
             raise Exception("URL Data not set.")
 
+        #if self.__seen_method == 'sqlite':
+        #    self._init_sqlite()
+
+        self._urlcheck.clear()
         self._stopping = False
         self._data['working'] = True
         self._start()
@@ -182,6 +198,14 @@ class Scraper(object):
         success = self._process_urls([root_url])
         return success
 
+    #def _test_seen_url(self, url):
+    #    seen = False
+    #    if self.__seen_method == 'dict':
+    #       seen = any(doc['url'] == page_url \
+    #           for doc in self._data['documents']) 
+    #    elif self.__seen_method == 'sqlite':
+    #    return seen
+
     def _process_urls(self, urls):
 
         if self._stopping == True:
@@ -200,8 +224,9 @@ class Scraper(object):
                 if self._stopping == True:
                     return False
                 if not page_url in self._data['bad_urls'] and \
-                        not any(seen_url['url'] == page_url['url'] \
-                        for seen_url in self._data['seen_urls']):
+                        not self._urlcheck.exists(page_url['url']):
+                        #not any(seen_url['url'] == page_url['url'] \
+                        #for seen_url in self._data['seen_urls']):
                     doc_type = self._type_document(page_url)
                     if '*' in self._data['url_data']['doc_types'] or \
                             (doc_type != '' and \
@@ -318,9 +343,10 @@ class Scraper(object):
         header_size = 0
         try_count = 0
         document_type = None
-        for seen_url in self._data['seen_urls']:
-            if url['url'] == seen_url:
-                document_type = seen_url['type']
+        #for seen_url in self._data['seen_urls']:
+        #    if url['url'] == seen_url:
+        #        document_type = seen_url['type']
+        doc_type = self._urlcheck.get_url(url['url'])
         if document_type == None and not url['url'] in self._data['bad_urls']:
             error_on_get = False
             while document_type == None and \
@@ -359,10 +385,11 @@ class Scraper(object):
                         if not url['url'] in self._data['bad_urls']:
                             self._data['bad_urls'].append(url['url'])
                 try_count += 1
-        self._data['seen_urls'].append({
-            'url': url['url'],
-            'type': document_type,
-        })
+        #self._data['seen_urls'].append({
+        #    'url': url['url'],
+        #    'type': document_type,
+        #})
+        self._urlcheck.insert_url(url['url'], document_type)
         self._new_url(url)
         if self._DEBUG == True:
             print "{0} : {1}".format(document_type, url['url'])
@@ -370,7 +397,8 @@ class Scraper(object):
                 "Document Count: {3}, Ignored Count: {4}, Try Count: {5}.".format(
                     None, #resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
                     self._data['bandwidth'],
-                    len(self._data['seen_urls']),
+                    #len(self._data['seen_urls']),
+                    self._urlcheck.url_count(),
                     len(self._data['documents']),
                     self._data['ignored_count'],
                     try_count,

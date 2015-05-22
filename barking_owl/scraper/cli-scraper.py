@@ -1,13 +1,45 @@
+import os
 import json
 import datetime
 from optparse import OptionParser
 from scraper import Scraper
+import requests
+from urlparse import urlsplit
+from random import randint
 
 _DEBUG = False
 
-def print_doc_info(_data, document_url):
+_DOWNLOAD_DOCUMENTS = False
+_DOCUMENT_DIRECTORY = '.'
+_DOCUMENT_COUNT = 0
+
+def handle_doc(_data, document_url):
     if _DEBUG == True:
         print "    New Document: {0} : {1}\n".format(document_url['tag_text'], document_url['url'])
+
+    if _DOWNLOAD_DOCUMENTS == True:
+        
+        rawname = urlsplit(document_url['url']).path.split('/')[-1]
+        filename = '{0}/{1}_{2}'.format(_DOCUMENT_DIRECTORY, _DOCUMENT_COUNT, rawname)
+
+        if not os.path.isdir(_DOCUMENT_DIRECTORY):
+            os.makedirs(_DOCUMENT_DIRECTORY)
+
+        print "    Downloading document to '{0}' ...".format(filename)
+
+        with open(filename, 'w') as f:
+            response = requests.get(document_url['url'], stream=True)
+            if not response.ok:
+                print "    ERROR! File could not be downloaded.\n"
+                return
+            for block in response.iter_content(1024):
+                if not block:
+                    break
+                f.write(block)
+        global _DOCUMENT_COUNT
+        _DOCUMENT_COUNT += 1
+
+        print "    Done.\n"
 
 if __name__ == '__main__':
 
@@ -32,6 +64,13 @@ if __name__ == '__main__':
         dest="json_output", help="Produce Pretty JSON output.", 
         default=False)
 
+    parser.add_option("-d", "--download-documents", action="store_true",
+        dest="download_documents", help="Download a document once found.",
+        default=False)
+
+    parser.add_option("-x", "--download-directory", dest="download_directory",
+        help="Document download directory.", metavar="DIR")
+
     (options, args) = parser.parse_args()
 
     if not options.target_url == '' and not options.target_url == None and \
@@ -40,13 +79,20 @@ if __name__ == '__main__':
             not options.max_link_level == None and \
             not options.tracking_method == '' and \
             not options.tracking_method == None and \
-            not options.json_output == '' and not options.json_output == None:
+            not options.json_output == '' and not options.json_output == None and \
+            not options.download_documents == '' and not options.download_documents == None and \
+            not options.download_directory == '' and not options.download_directory == None:
 
         if options.json_output == False:
             _DEBUG = True
 
         if _DEBUG == True:
             print " -- CLI BarkingOwl Scraper -- "
+
+        if options.download_documents == True:
+            _DOWNLOAD_DOCUMENTS = True
+
+        _DOCUMENT_DIRECTORY = options.download_directory
 
         url = {
             'target_url': options.target_url,
@@ -70,7 +116,7 @@ if __name__ == '__main__':
                 DEBUG=_DEBUG,
             )
             scraper.set_callbacks(
-                found_doc_callback = print_doc_info,
+                found_doc_callback = handle_doc,
             )
             scraper.set_url_data(url)
 

@@ -38,7 +38,7 @@ setup(
       "six==1.5.2",
       "wsgiref==0.1.2",
       "tldextract==1.5.1",
-      "requests==2.5.1",
+      "requests==2.20.0",
       "pymongo==2.8",
       "daemon==1.1",
     ], 
